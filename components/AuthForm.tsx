@@ -50,7 +50,7 @@ export function AuthForm({ mode }: Props) {
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#58cc02] text-white">
             <MapPin size={32} />
           </div>
-          <h1 className="mt-3 text-3xl font-extrabold text-[#3c3c3c]">GeoDuolingo</h1>
+          <h1 className="mt-3 text-3xl font-extrabold text-[#3c3c3c]">GeoLingo</h1>
           <p className="mt-1 font-bold text-[#777]">
             {mode === "login" ? "Қайта оралғаныңа қуаныштымыз" : "Географияны картамен жатта"}
           </p>

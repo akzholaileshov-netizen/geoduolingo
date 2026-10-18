@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex w-full max-w-lg items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2 text-[#58cc02]">
             <MapPin size={26} />
-            <span className="text-lg font-extrabold text-[#3c3c3c]">GeoDuolingo</span>
+            <span className="text-lg font-extrabold text-[#3c3c3c]">GeoLingo</span>
           </Link>
           <div className="flex items-center gap-3 font-extrabold">
             <span className="flex items-center gap-1 text-[#ff9600]" data-testid="header-streak">

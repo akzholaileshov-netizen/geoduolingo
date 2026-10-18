@@ -9,7 +9,7 @@ export function Splash() {
     <div className="flex min-h-dvh items-center justify-center bg-[#58cc02] text-white">
       <div className="text-center">
         <MapPin className="mx-auto" size={52} />
-        <p className="mt-2 text-3xl font-extrabold">GeoDuolingo</p>
+        <p className="mt-2 text-3xl font-extrabold">GeoLingo</p>
       </div>
     </div>
   );

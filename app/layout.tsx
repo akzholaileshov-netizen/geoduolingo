@@ -11,7 +11,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "GeoDuolingo",
+  title: "GeoLingo",
   description: "Географиялық номенклатураны картада жатта",
 };
 
