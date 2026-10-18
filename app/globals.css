@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-nunito), "Noto Sans", "DejaVu Sans", sans-serif;
+}
+
+html,
+body {
+  background: #f4fbf0;
+  color: #3c3c3c;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+button,
+a,
+input {
+  font-family: inherit;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #d7ecff;
+  font-family: inherit;
+}
+
+.leaflet-container img,
+.leaflet-container canvas {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.geo-pin {
+  background: transparent;
+  border: none;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes nibble {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-pop {
+  animation: pop-in 0.28s ease;
+}
+
+.animate-nibble {
+  animation: nibble 0.4s ease;
+}
+
+.animate-floaty {
+  animation: floaty 1.4s ease-in-out infinite;
+}

@@ -1,0 +1,57 @@
+import { getLesson, getModule, modules } from "@/lib/curriculum";
+
+export function levelFromXp(xp: number) {
+  return Math.floor(Math.max(0, xp) / 100) + 1;
+}
+
+export function xpIntoLevel(xp: number) {
+  return Math.max(0, xp) % 100;
+}
+
+export function localDateISO(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function shiftDateISO(iso: string, days: number) {
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(year || 1970, (month || 1) - 1, day || 1);
+  date.setDate(date.getDate() + days);
+  return localDateISO(date);
+}
+
+export function nextStreak(streak: number, lastActiveDate: string | null, today = localDateISO()) {
+  if (lastActiveDate === today) {
+    return { streak: Math.max(1, streak), lastActiveDate: today };
+  }
+  if (lastActiveDate === shiftDateISO(today, -1)) {
+    return { streak: Math.max(0, streak) + 1, lastActiveDate: today };
+  }
+  return { streak: 1, lastActiveDate: today };
+}
+
+export function isLessonUnlocked(lessonId: string, completed: readonly string[]) {
+  const lesson = getLesson(lessonId);
+  const skillModule = getModule(lesson.moduleId);
+  const index = skillModule.lessonIds.indexOf(lessonId);
+  if (index > 0) return completed.includes(skillModule.lessonIds[index - 1] ?? "");
+  const moduleIndex = modules.findIndex((item) => item.id === skillModule.id);
+  if (moduleIndex <= 0) return true;
+  const previous = modules[moduleIndex - 1];
+  if (!previous) return true;
+  return previous.lessonIds.every((id) => completed.includes(id));
+}
+
+export function isModuleFinished(moduleId: string, completed: readonly string[]) {
+  return getModule(moduleId).lessonIds.every((id) => completed.includes(id));
+}
+
+export type LessonVisualState = "locked" | "active" | "done";
+
+export function lessonVisualState(lessonId: string, completed: readonly string[]): LessonVisualState {
+  if (completed.includes(lessonId)) return "done";
+  if (!isLessonUnlocked(lessonId, completed)) return "locked";
+  return "active";
+}
