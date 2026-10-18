@@ -5,7 +5,6 @@ import { AppShell } from "@/components/AppShell";
 import { DuoButton } from "@/components/DuoButton";
 import { modules } from "@/lib/curriculum";
 import { isModuleFinished, levelFromXp } from "@/lib/progress";
-import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import { useAppStore } from "@/store/useAppStore";
 
 export default function ProfilePage() {
@@ -23,9 +22,6 @@ export default function ProfilePage() {
         <h1 className="mt-3 text-2xl font-extrabold">{profile?.displayName}</h1>
         <p className="text-sm font-bold text-[#777]">{profile?.email}</p>
         <p className="mt-2 text-sm font-extrabold text-[#1cb0f6]">Деңгей {level}</p>
-        <p className="mt-1 text-xs font-bold text-[#afafaf]">
-          {isSupabaseConfigured ? "Supabase аккаунты" : "Демо режим"}
-        </p>
       </section>
       <div className="mt-4 grid grid-cols-3 gap-3">
         <Stat label="XP" value={profile?.xp ?? 0} icon={<Star size={18} fill="#ffc800" className="text-[#ffc800]" />} testId="profile-xp" />
