@@ -55,11 +55,13 @@ export function AuthForm({ mode }: Props) {
             {mode === "login" ? "Қайта оралғаныңа қуаныштымыз" : "Географияны картамен жатта"}
           </p>
         </div>
-        <p className="mb-4 rounded-2xl bg-[#e8f8d8] px-4 py-3 text-sm font-bold text-[#3c3c3c]">
-          {isSupabaseConfigured
-            ? "Аккаунт Supabase арқылы ашылады."
-            : "Демо режим: кез келген пошта мен құпия сөз жарайды. Прогресс осы құрылғыда сақталады."}
-        </p>
+        {mode === "signup" ? (
+          <p className="mb-4 rounded-2xl bg-[#e8f8d8] px-4 py-3 text-sm font-bold text-[#3c3c3c]">
+            {isSupabaseConfigured
+              ? "Аккаунт Supabase арқылы ашылады."
+              : "Демо режим: кез келген пошта мен құпия сөз жарайды. Прогресс осы құрылғыда сақталады."}
+          </p>
+        ) : null}
         <form onSubmit={onSubmit} className="space-y-4">
           {mode === "signup" ? (
             <label className="block text-sm font-extrabold text-[#3c3c3c]">
