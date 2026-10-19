@@ -67,8 +67,8 @@ export function ResultScreen() {
           <DuoButton onClick={() => router.push(`/lesson/${next.id}`)}>Келесі сабақ</DuoButton>
         ) : null}
         {!passed ? <DuoButton onClick={() => router.push(`/lesson/${lesson.id}`)}>Қайталау</DuoButton> : null}
-        <DuoButton variant="white" onClick={() => router.push("/")}>
-          Басты бетке
+        <DuoButton variant="white" onClick={() => router.push(`/continent/${lesson.continentId}`)}>
+          Артқа
         </DuoButton>
       </div>
     </div>

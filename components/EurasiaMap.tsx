@@ -1,6 +1,7 @@
 "use client";
 
-import { featureShapes, landShapes, mapView, type MapShape } from "@/lib/eurasia-map";
+import type { MapShape } from "@/lib/eurasia-map";
+import { mapView, regionFeatures, regionLand } from "@/lib/map-regions";
 
 export type RegionTone = "idle" | "selected" | "correct" | "wrong" | "marked" | "muted";
 
@@ -20,16 +21,21 @@ const paints: Record<RegionTone, { fill: string; stroke: string }> = {
   muted: { fill: "#ececec", stroke: "#b5b5b5" },
 };
 
-const landById = new Map(landShapes.map((shape) => [shape.id, shape]));
-const featureById = new Map(featureShapes.map((shape) => [shape.id, shape]));
+const landById = new Map(regionLand.map((shape) => [shape.id, shape]));
+const featureById = new Map(regionFeatures.map((shape) => [shape.id, shape]));
+
+export type MapFrame = { x: number; y: number; width: number; height: number };
 
 export function EurasiaMap({
   active,
   onSelect,
+  frame,
 }: {
   active: MapRegionState[];
   onSelect?: (id: string) => void;
+  frame?: MapFrame;
 }) {
+  const view = frame ?? { x: 0, y: 0, width: mapView.width, height: mapView.height };
   const byId = new Map(active.map((region) => [region.id, region]));
 
   function paintFor(region: MapRegionState | undefined, hotspot: boolean) {
@@ -56,7 +62,7 @@ export function EurasiaMap({
         strokeLinejoin="round"
         fillRule="evenodd"
         pointerEvents={interactive ? "auto" : "none"}
-        style={{ cursor: interactive ? "pointer" : "default" }}
+        style={{ cursor: interactive ? "pointer" : "default", pointerEvents: interactive ? "auto" : "none" }}
         onClick={
           interactive
             ? () => {
@@ -72,14 +78,14 @@ export function EurasiaMap({
   return (
     <svg
       data-testid="eurasia-map"
-      viewBox={`0 0 ${mapView.width} ${mapView.height}`}
+      viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
       preserveAspectRatio="xMidYMid meet"
       className="block h-full w-full"
       role="group"
       aria-label="Еуразия картасы"
     >
-      <rect width={mapView.width} height={mapView.height} fill="#d7ecff" />
-      {landShapes.map((shape) => shapePath(shape, false))}
+      <rect x={view.x} y={view.y} width={view.width} height={view.height} fill="#d7ecff" />
+      {regionLand.map((shape) => shapePath(shape, false))}
       {active.map((region) => {
         const shape = featureById.get(region.id);
         if (!shape) return null;

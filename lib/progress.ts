@@ -1,4 +1,4 @@
-import { findLesson, getModule, modules } from "@/lib/curriculum";
+import { findLesson, getContinent, getModule, modules } from "@/lib/curriculum";
 
 const currentLessonIds = new Set(modules.flatMap((module) => module.lessonIds));
 
@@ -42,15 +42,11 @@ export function isLessonUnlocked(lessonId: string, completed: readonly string[])
   const lesson = findLesson(lessonId);
   if (!lesson) return false;
   const done = currentCompletions(completed);
-  const skillModule = getModule(lesson.moduleId);
-  const index = skillModule.lessonIds.indexOf(lessonId);
+  const continent = getContinent(lesson.continentId);
+  const index = continent.lessonIds.indexOf(lessonId);
   if (index < 0) return false;
-  if (index > 0) return done.includes(skillModule.lessonIds[index - 1] ?? "");
-  const moduleIndex = modules.findIndex((item) => item.id === skillModule.id);
-  if (moduleIndex <= 0) return true;
-  const previous = modules[moduleIndex - 1];
-  if (!previous) return true;
-  return previous.lessonIds.every((id) => done.includes(id));
+  if (index === 0) return true;
+  return done.includes(continent.lessonIds[index - 1] ?? "");
 }
 
 export function isModuleFinished(moduleId: string, completed: readonly string[]) {

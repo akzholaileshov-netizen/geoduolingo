@@ -5,6 +5,8 @@ export type MapShape = {
   d: string;
   cx: number;
   cy: number;
+  rx?: number;
+  ry?: number;
 };
 
 export const landShapes: MapShape[] = [

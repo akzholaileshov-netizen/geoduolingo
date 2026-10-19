@@ -7,8 +7,8 @@ import { DuoButton } from "@/components/DuoButton";
 import { EurasiaMap, type MapRegionState, type RegionTone } from "@/components/EurasiaMap";
 import { Splash } from "@/components/Providers";
 import { useRequireProfile } from "@/components/AppShell";
-import { findLesson, getPlace, questionsForLesson } from "@/lib/curriculum";
-import { landShapes } from "@/lib/eurasia-map";
+import { findLesson, getContinent, getLesson, getPlace, questionsForLesson } from "@/lib/curriculum";
+import { frameFor } from "@/lib/map-regions";
 import { XP_PER_CORRECT } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -57,12 +57,12 @@ export function LessonScreen() {
   const place = getPlace(question.placeId);
   const selectedChoice = active.selected?.type === "choice" ? active.selected.optionId : null;
   const selectedRegion = active.selected?.type === "pinpoint" ? active.selected.regionId : null;
-  const countryLesson = lesson.placeIds.every((id) => getPlace(id).kind === "country");
+  const continent = getContinent(lesson.continentId);
+  const frame = frameFor(continent.lessonIds.flatMap((id) => getLesson(id).placeIds));
 
   let mapRegions: MapRegionState[] = [];
   if (question.type === "pinpoint") {
-    const ids = countryLesson ? landShapes.map((shape) => shape.id) : lesson.placeIds;
-    mapRegions = ids.map((id) => {
+    mapRegions = lesson.placeIds.map((id) => {
       let tone: RegionTone = "idle";
       if (active.checked) {
         if (id === question.placeId) tone = "correct";
@@ -92,9 +92,10 @@ export function LessonScreen() {
   const correct = active.lastResult?.correct ?? false;
   const ending = active.hearts <= 0 || active.index >= questions.length - 1;
 
+  const continentId = lesson.continentId;
   function quit() {
     const leave = window.confirm("Сабақтан шыққың келе ме? Бұл әрекеттің ұпайы сақталмайды.");
-    if (leave) router.push("/");
+    if (leave) router.push(`/continent/${continentId}`);
   }
 
   function handleNext() {
@@ -148,6 +149,7 @@ export function LessonScreen() {
         <div className="absolute inset-0 overflow-hidden rounded-[28px] border-2 border-[#e5e5e5] bg-[#d7ecff]">
           <EurasiaMap
             active={mapRegions}
+            frame={frame}
             onSelect={
               active.checked ? undefined : question.type === "pinpoint" ? setRegion : question.type === "pick" ? setChoice : undefined
             }
