@@ -2,6 +2,7 @@
 
 import { MapPin } from "lucide-react";
 import { useEffect } from "react";
+import { unlockAudio } from "@/lib/audio";
 import { useAppStore } from "@/store/useAppStore";
 
 export function Splash() {
@@ -22,6 +23,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { capture: true });
+    return () => window.removeEventListener("pointerdown", unlock, { capture: true });
+  }, []);
 
   return (
     <>

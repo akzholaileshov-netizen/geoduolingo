@@ -65,3 +65,25 @@ input {
 .animate-floaty {
   animation: floaty 1.4s ease-in-out infinite;
 }
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(220deg);
+    opacity: 0;
+  }
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 9px;
+  height: 14px;
+  animation: confetti-fall 1.7s ease-in forwards;
+}

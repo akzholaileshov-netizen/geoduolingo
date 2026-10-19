@@ -459,7 +459,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     const nextSession: LessonSession = { ...session, status: passed ? "passed" : "failed" };
     set({ profile: nextProfile, session: nextSession });
-    if (passed) playTone("done");
     void persistOutcome(nextProfile, nextSession, passed).catch(() => {
       set({ saveError: "Прогресс сақталмады. Интернетті тексеріп, сабақты қайта аяқта." });
     });

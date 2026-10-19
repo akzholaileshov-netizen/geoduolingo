@@ -4,6 +4,8 @@ import { Heart, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { DuoButton } from "@/components/DuoButton";
+import { SoundToggle } from "@/components/SoundToggle";
+import { unlockAudio } from "@/lib/audio";
 import { EurasiaMap, type MapRegionState, type RegionTone } from "@/components/EurasiaMap";
 import { Splash } from "@/components/Providers";
 import { useRequireProfile } from "@/components/AppShell";
@@ -99,6 +101,7 @@ export function LessonScreen() {
   }
 
   function handleNext() {
+    unlockAudio();
     nextQuestion();
     if (ending) router.push(`/lesson/${lessonId}/result`);
   }
@@ -131,6 +134,7 @@ export function LessonScreen() {
             />
           ))}
         </div>
+        <SoundToggle />
       </header>
       <p className="px-4 text-center text-xs font-extrabold uppercase tracking-wide text-[#afafaf]">
         {lesson.titleKk} · {active.index + 1}/{questions.length}

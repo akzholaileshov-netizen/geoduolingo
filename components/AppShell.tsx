@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
+import { SoundToggle } from "@/components/SoundToggle";
 import { Splash } from "@/components/Providers";
 
 const links = [
@@ -50,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Star size={18} fill="#ffc800" />
               {profile.xp}
             </span>
+            <SoundToggle />
           </div>
         </div>
         {saveError ? (
