@@ -11,7 +11,7 @@ export type Profile = {
 export type AnswerMark = "pending" | "correct" | "wrong";
 
 export type Selection =
-  | { type: "pinpoint"; lat: number; lng: number }
+  | { type: "pinpoint"; regionId: string }
   | { type: "choice"; optionId: string };
 
 export type CheckResult = {

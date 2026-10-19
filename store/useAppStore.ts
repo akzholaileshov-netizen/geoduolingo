@@ -3,8 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { playTone } from "@/lib/audio";
-import { questionsForLesson, findLesson, getPlace } from "@/lib/curriculum";
-import { haversineKm } from "@/lib/geo";
+import { questionsForLesson, findLesson } from "@/lib/curriculum";
 import { nextStreak } from "@/lib/progress";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { MAX_HEARTS, XP_PER_CORRECT, type AuthResult, type LessonSession, type Profile, type Selection } from "@/lib/types";
@@ -28,7 +27,7 @@ type AppState = {
   signup: (email: string, password: string, displayName: string) => Promise<AuthResult>;
   logout: () => Promise<void>;
   startLesson: (lessonId: string) => void;
-  setPin: (lat: number, lng: number) => void;
+  setRegion: (regionId: string) => void;
   setChoice: (optionId: string) => void;
   checkAnswer: () => void;
   nextQuestion: () => void;
@@ -382,11 +381,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  setPin: (lat, lng) => {
+  setRegion: (regionId) => {
     const session = get().session;
     const question = session ? currentQuestion(session) : undefined;
     if (!session || session.status !== "active" || session.checked || question?.type !== "pinpoint") return;
-    set({ session: { ...session, selected: { type: "pinpoint", lat, lng } } });
+    set({ session: { ...session, selected: { type: "pinpoint", regionId } } });
   },
 
   setChoice: (optionId) => {
@@ -402,14 +401,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!session || session.status !== "active" || session.checked || !session.selected) return;
     const question = currentQuestion(session);
     if (!question) return;
-    const place = getPlace(question.placeId);
     let correct = false;
-    let distanceKm: number | undefined;
     const selected: Selection = session.selected;
     if (question.type === "pinpoint") {
       if (selected.type !== "pinpoint") return;
-      distanceKm = haversineKm(selected, place);
-      correct = distanceKm <= place.radiusKm;
+      correct = selected.regionId === question.placeId;
     } else {
       if (selected.type !== "choice") return;
       correct = selected.optionId === question.placeId;
@@ -424,7 +420,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         hearts: correct ? session.hearts : Math.max(0, session.hearts - 1),
         xpEarned: session.xpEarned + (correct ? XP_PER_CORRECT : 0),
         mistakes: session.mistakes + (correct ? 0 : 1),
-        lastResult: { correct, distanceKm },
+        lastResult: { correct },
         answers,
         selected,
       },

@@ -10,7 +10,6 @@ export type PlaceKind =
   | "lake"
   | "sea"
   | "gulf"
-  | "desert"
   | "city"
   | "capital"
   | "mountain";
@@ -160,17 +159,6 @@ export const places: Place[] = [
   { id: "anadyr-gulf", nameKk: "Анадыр шығанағы", accusativeKk: "Анадыр шығанағын", lat: 64.2, lng: 178.2, radiusKm: 130, kind: "gulf" },
   { id: "gulf-of-oman", nameKk: "Оман шығанағы", accusativeKk: "Оман шығанағын", lat: 24.6, lng: 58.8, radiusKm: 140, kind: "gulf" },
   { id: "bothnia", nameKk: "Ботния шығанағы", accusativeKk: "Ботния шығанағын", lat: 62.3, lng: 19.8, radiusKm: 150, kind: "gulf" },
-
-  { id: "gobi", nameKk: "Гоби шөлі", accusativeKk: "Гоби шөлін", lat: 44.2, lng: 105.5, radiusKm: 340, kind: "desert" },
-  { id: "karakum", nameKk: "Қарақұм шөлі", accusativeKk: "Қарақұм шөлін", lat: 39.2, lng: 59.4, radiusKm: 180, kind: "desert" },
-  { id: "kyzylkum", nameKk: "Қызылқұм шөлі", accusativeKk: "Қызылқұм шөлін", lat: 42.8, lng: 63.8, radiusKm: 160, kind: "desert" },
-  { id: "taklamakan", nameKk: "Такла-Макан шөлі", accusativeKk: "Такла-Макан шөлін", lat: 39.0, lng: 82.8, radiusKm: 260, kind: "desert" },
-  { id: "arabian-desert", nameKk: "Араб шөлі", accusativeKk: "Араб шөлін", lat: 23.0, lng: 46.0, radiusKm: 380, kind: "desert" },
-  { id: "thar", nameKk: "Тар шөлі", accusativeKk: "Тар шөлін", lat: 27.2, lng: 71.2, radiusKm: 150, kind: "desert" },
-  { id: "dasht-e-kavir", nameKk: "Деште-Кевир шөлі", accusativeKk: "Деште-Кевир шөлін", lat: 34.7, lng: 54.8, radiusKm: 130, kind: "desert" },
-  { id: "syrian-desert", nameKk: "Сирия шөлі", accusativeKk: "Сирия шөлін", lat: 33.3, lng: 38.6, radiusKm: 180, kind: "desert" },
-  { id: "dasht-e-lut", nameKk: "Деште-Лут шөлі", accusativeKk: "Деште-Лут шөлін", lat: 30.4, lng: 58.7, radiusKm: 120, kind: "desert" },
-  { id: "ordos", nameKk: "Ордос шөлі", accusativeKk: "Ордос шөлін", lat: 39.2, lng: 108.8, radiusKm: 120, kind: "desert" },
 ];
 
 export const lessons: Lesson[] = [
@@ -281,20 +269,13 @@ export const lessons: Lesson[] = [
       "bothnia",
     ],
   },
-  {
-    id: "eurasia-deserts",
-    moduleId: "eurasia",
-    titleKk: "Шөлдер",
-    order: 10,
-    placeIds: ["gobi", "karakum", "kyzylkum", "taklamakan", "arabian-desert", "thar", "dasht-e-kavir", "syrian-desert", "dasht-e-lut", "ordos"],
-  },
 ];
 
 export const modules: Module[] = [
   {
     id: "eurasia",
     titleKk: "Модуль 1: Еуразия",
-    descriptionKk: "Мемлекет, арал, түбек, тау, жазық, өзен, көл, теңіз, шығанақ және шөл",
+    descriptionKk: "Мемлекет, арал, түбек, тау, жазық, өзен, көл, теңіз және шығанақ",
     emoji: "🌏",
     center: [48, 70],
     zoom: 3,
@@ -334,13 +315,6 @@ export function placesInModule(moduleId: string): Place[] {
     for (const placeId of getLesson(lessonId).placeIds) ids.add(placeId);
   }
   return [...ids].map((id) => getPlace(id));
-}
-
-export function focusZoom(place: Place) {
-  if (place.radiusKm <= 90) return 6;
-  if (place.radiusKm <= 220) return 5;
-  if (place.radiusKm <= 450) return 4;
-  return 3;
 }
 
 function optionIds(correctId: string, poolIds: readonly string[], salt: number): string[] {
@@ -403,7 +377,22 @@ function validateCurriculum() {
   if (placeMap.size !== places.length) throw new Error("Duplicate place id");
   if (lessonMap.size !== lessons.length) throw new Error("Duplicate lesson id");
   if (modules.length !== 1 || modules[0]?.id !== "eurasia") throw new Error("Expected the Eurasia module");
-  const retired = ["kz-1", "kz-2", "kz-3", "asia-1", "asia-2", "asia-3", "eu-1", "eu-2", "eu-3", "world-1", "world-2", "world-3"];
+  const expectedLessons = [
+    "eurasia-states",
+    "eurasia-islands",
+    "eurasia-peninsulas",
+    "eurasia-mountains",
+    "eurasia-plains",
+    "eurasia-rivers",
+    "eurasia-lakes",
+    "eurasia-seas",
+    "eurasia-gulfs",
+  ];
+  if (modules[0]?.lessonIds.join(",") !== expectedLessons.join(",")) throw new Error("Unexpected Eurasia lessons");
+  if (places.some((place) => place.nameKk.includes("шөл") || place.id.includes("desert") || place.id === "gobi")) {
+    throw new Error("Deserts are not in this module");
+  }
+  const retired = ["kz-1", "kz-2", "kz-3", "asia-1", "asia-2", "asia-3", "eu-1", "eu-2", "eu-3", "world-1", "world-2", "world-3", "eurasia-deserts"];
   const used = new Set<string>();
   for (const skillModule of modules) {
     if (skillModule.lessonIds.length !== lessons.length) throw new Error("Module lesson list mismatch");
