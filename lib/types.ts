@@ -20,6 +20,8 @@ export type CheckResult = {
   distanceKm?: number;
 };
 
+export type ShapeLock = "found" | "missed";
+
 export type LessonSession = {
   lessonId: string;
   moduleId: string;
@@ -33,6 +35,10 @@ export type LessonSession = {
   lastResult: CheckResult | null;
   answers: AnswerMark[];
   streakBefore: number;
+  misses: number;
+  locks: Record<string, ShapeLock>;
+  startedAt: number;
+  finishedAt: number | null;
 };
 
 export type AuthResult =

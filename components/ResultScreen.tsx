@@ -8,8 +8,8 @@ import { SoundToggle } from "@/components/SoundToggle";
 import { Splash } from "@/components/Providers";
 import { useRequireProfile } from "@/components/AppShell";
 import { playTone } from "@/lib/audio";
-import { findQuiz, nextLessonId, nextSubTopic } from "@/lib/curriculum";
-import { lessonVisualState, levelFromXp, subTopicVisualState } from "@/lib/progress";
+import { findQuiz } from "@/lib/curriculum";
+import { lessonContinueHref, levelFromXp } from "@/lib/progress";
 import { useAppStore } from "@/store/useAppStore";
 
 const confetti = [
@@ -58,19 +58,7 @@ export function ResultScreen() {
 
   if (!profile || !ready || !quiz || !session) return <Splash />;
 
-  const nextTopic = nextSubTopic(quiz.subTopic.id);
-  const nextSection = nextLessonId(quiz.lesson.id);
-  const completed = profile.completedLessonIds;
-  const sectionHref = `/continent/${quiz.lesson.continentId}/${quiz.lesson.id}`;
-  const continueHref = !passed
-    ? sectionHref
-    : nextTopic
-      ? subTopicVisualState(nextTopic.id, completed) === "active"
-        ? `${sectionHref}?focus=${nextTopic.id}`
-        : sectionHref
-      : nextSection && lessonVisualState(nextSection, completed) === "active"
-        ? `/continent/${quiz.lesson.continentId}?focus=${nextSection}`
-        : `/continent/${quiz.lesson.continentId}`;
+  const continueHref = lessonContinueHref(quiz.subTopic.id, Boolean(passed), profile.completedLessonIds);
   const previousLevel = levelFromXp(profile.xp - session.xpEarned);
   const level = levelFromXp(profile.xp);
   const streakGrew = passed && profile.streak > session.streakBefore;

@@ -7,7 +7,7 @@ import { questionsForLesson, findQuiz } from "@/lib/curriculum";
 import { isFlagCode } from "@/lib/flags";
 import { nextStreak } from "@/lib/progress";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { MAX_HEARTS, XP_PER_CORRECT, type AuthResult, type LessonSession, type Profile, type Selection } from "@/lib/types";
+import { MAX_HEARTS, XP_PER_CORRECT, type AuthResult, type LessonSession, type Profile } from "@/lib/types";
 
 const STORAGE_KEY = "geoduolingo.v1";
 
@@ -31,6 +31,7 @@ type AppState = {
   startLesson: (lessonId: string) => void;
   setRegion: (regionId: string) => void;
   setChoice: (optionId: string) => void;
+  gradeMapClick: (regionId: string) => "ignore" | "correct" | "miss1" | "miss2" | "miss3";
   checkAnswer: () => void;
   nextQuestion: () => void;
   setAvatarFlag: (code: string) => void;
@@ -414,7 +415,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const profile = get().profile;
     const current = get().session;
     if (!quiz || !profile) return;
-    if (current?.lessonId === lessonId && current.status === "active") return;
+    if (current?.lessonId === lessonId && current.status === "active" && current.locks && current.startedAt) return;
     const count = questionsForLesson(lessonId).length;
     set({
       session: {
@@ -430,6 +431,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         lastResult: null,
         answers: Array.from({ length: count }, () => "pending" as const),
         streakBefore: profile.streak,
+        misses: 0,
+        locks: {},
+        startedAt: Date.now(),
+        finishedAt: null,
       },
       saveError: null,
     });
@@ -450,20 +455,61 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ session: { ...session, selected: { type: "choice", optionId } } });
   },
 
+  gradeMapClick: (regionId) => {
+    const session = get().session;
+    const question = session ? currentQuestion(session) : undefined;
+    if (!session || session.status !== "active" || session.checked || !question || question.type !== "pinpoint") {
+      return "ignore";
+    }
+    const locked = session.locks[regionId];
+    if (locked && regionId !== question.placeId) return "ignore";
+    if (regionId === question.placeId) {
+      const answers = session.answers.slice();
+      answers[session.index] = "correct";
+      playTone("ok");
+      set({
+        session: {
+          ...session,
+          checked: true,
+          locks: session.locks[regionId] ? session.locks : { ...session.locks, [regionId]: "found" },
+          answers,
+          xpEarned: session.xpEarned + XP_PER_CORRECT,
+          lastResult: { correct: true },
+          selected: { type: "pinpoint", regionId },
+        },
+      });
+      return "correct";
+    }
+    const misses = session.misses + 1;
+    if (misses >= 3) {
+      const answers = session.answers.slice();
+      answers[session.index] = "wrong";
+      playTone("bad");
+      set({
+        session: {
+          ...session,
+          checked: true,
+          misses,
+          locks: session.locks[question.placeId] ? session.locks : { ...session.locks, [question.placeId]: "missed" },
+          answers,
+          mistakes: session.mistakes + 1,
+          lastResult: { correct: false },
+        },
+      });
+      return "miss3";
+    }
+    playTone(misses === 1 ? "soft" : "bad");
+    set({ session: { ...session, misses } });
+    return misses === 1 ? "miss1" : "miss2";
+  },
+
   checkAnswer: () => {
     const session = get().session;
     if (!session || session.status !== "active" || session.checked || !session.selected) return;
     const question = currentQuestion(session);
-    if (!question) return;
-    let correct = false;
-    const selected: Selection = session.selected;
-    if (question.type === "pinpoint") {
-      if (selected.type !== "pinpoint") return;
-      correct = selected.regionId === question.placeId;
-    } else {
-      if (selected.type !== "choice") return;
-      correct = selected.optionId === question.placeId;
-    }
+    if (!question || question.type === "pinpoint") return;
+    if (session.selected.type !== "choice") return;
+    const correct = session.selected.optionId === question.placeId;
     playTone(correct ? "ok" : "bad");
     const answers = session.answers.slice();
     answers[session.index] = correct ? "correct" : "wrong";
@@ -476,7 +522,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         mistakes: session.mistakes + (correct ? 0 : 1),
         lastResult: { correct },
         answers,
-        selected,
+        selected: session.selected,
       },
     });
   },
@@ -486,9 +532,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const profile = get().profile;
     if (!session || !profile || !session.checked || session.status !== "active") return;
     const total = questionsForLesson(session.lessonId).length;
-    const failed = session.hearts <= 0;
+    const heartFail = session.hearts <= 0;
     const finished = session.index >= total - 1;
-    if (!failed && !finished) {
+    if (!heartFail && !finished) {
       set({
         session: {
           ...session,
@@ -496,11 +542,13 @@ export const useAppStore = create<AppState>((set, get) => ({
           checked: false,
           selected: null,
           lastResult: null,
+          misses: 0,
         },
       });
       return;
     }
-    const passed = !failed;
+    const found = session.answers.filter((mark) => mark === "correct").length;
+    const passed = !heartFail && found > 0;
     const completed = new Set(profile.completedLessonIds);
     if (passed) completed.add(session.lessonId);
     const streak = passed ? nextStreak(profile.streak, profile.lastActiveDate) : null;
@@ -511,7 +559,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       lastActiveDate: streak ? streak.lastActiveDate : profile.lastActiveDate,
       completedLessonIds: [...completed],
     };
-    const nextSession: LessonSession = { ...session, status: passed ? "passed" : "failed" };
+    const nextSession: LessonSession = {
+      ...session,
+      status: passed ? "passed" : "failed",
+      finishedAt: Date.now(),
+    };
     set({ profile: nextProfile, session: nextSession });
     void persistOutcome(nextProfile, nextSession, passed).catch(() => {
       set({ saveError: "Прогресс сақталмады. Интернетті тексеріп, сабақты қайта аяқта." });

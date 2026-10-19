@@ -1,4 +1,4 @@
-type Tone = "ok" | "bad" | "done";
+type Tone = "ok" | "soft" | "bad" | "done";
 
 export const SOUND_KEY = "geoduolingo.sound";
 
@@ -83,6 +83,10 @@ export function playTone(kind: Tone) {
       voice(ctx, 659.25, now, 0.14, 0.035, "triangle");
       voice(ctx, 880, now + 0.08, 0.18, 0.032, "sine");
       voice(ctx, 1318.5, now + 0.08, 0.12, 0.01, "sine");
+      return;
+    }
+    if (kind === "soft") {
+      slide(ctx, 523.25, 392, now, 0.1, 0.016);
       return;
     }
     if (kind === "bad") {

@@ -1,4 +1,4 @@
-import { findLesson, findQuiz, getContinent, getModule, lessons, modules } from "@/lib/curriculum";
+import { findLesson, findQuiz, getContinent, getModule, lessons, modules, nextLessonId, nextSubTopic } from "@/lib/curriculum";
 
 const currentLessonIds = new Set([
   ...modules.flatMap((module) => module.lessonIds),
@@ -86,6 +86,24 @@ export function lessonVisualState(lessonId: string, completed: readonly string[]
   if (isSectionComplete(lessonId, completed)) return "done";
   if (!isLessonUnlocked(lessonId, completed)) return "locked";
   return "active";
+}
+
+export function lessonContinueHref(quizId: string, passed: boolean, completed: readonly string[]) {
+  const quiz = findQuiz(quizId);
+  if (!quiz) return "/";
+  const sectionHref = `/continent/${quiz.lesson.continentId}/${quiz.lesson.id}`;
+  if (!passed) return sectionHref;
+  const nextTopic = nextSubTopic(quiz.subTopic.id);
+  if (nextTopic) {
+    return subTopicVisualState(nextTopic.id, completed) === "active"
+      ? `${sectionHref}?focus=${nextTopic.id}`
+      : sectionHref;
+  }
+  const nextSection = nextLessonId(quiz.lesson.id);
+  if (nextSection && lessonVisualState(nextSection, completed) === "active") {
+    return `/continent/${quiz.lesson.continentId}?focus=${nextSection}`;
+  }
+  return `/continent/${quiz.lesson.continentId}`;
 }
 
 export function subTopicVisualState(subTopicId: string, completed: readonly string[]): LessonVisualState {

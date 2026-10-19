@@ -3,13 +3,16 @@
 import type { MapShape } from "@/lib/eurasia-map";
 import { mapView, regionFeatures, regionLand } from "@/lib/map-regions";
 
-export type RegionTone = "idle" | "selected" | "correct" | "wrong" | "marked" | "muted";
+export type RegionTone = "idle" | "selected" | "correct" | "wrong" | "marked" | "muted" | "found" | "missed";
+
+export type MapFlash = "yellow" | "orange" | "blink";
 
 export type MapRegionState = {
   id: string;
   tone: RegionTone;
   letter?: string;
   interactive: boolean;
+  effect?: MapFlash;
 };
 
 const paints: Record<RegionTone, { fill: string; stroke: string }> = {
@@ -19,6 +22,14 @@ const paints: Record<RegionTone, { fill: string; stroke: string }> = {
   wrong: { fill: "#ff9d9d", stroke: "#d62828" },
   marked: { fill: "#7ec8f8", stroke: "#1899d6" },
   muted: { fill: "#ececec", stroke: "#b5b5b5" },
+  found: { fill: "#FFFFFF", stroke: "#333333" },
+  missed: { fill: "#EF4444", stroke: "#333333" },
+};
+
+const flashClass: Record<MapFlash, string> = {
+  yellow: "map-flash-yellow",
+  orange: "map-flash-orange",
+  blink: "map-miss-pulse",
 };
 
 const landById = new Map(regionLand.map((shape) => [shape.id, shape]));
@@ -30,10 +41,12 @@ export function EurasiaMap({
   active,
   onSelect,
   frame,
+  selectAny = false,
 }: {
   active: MapRegionState[];
   onSelect?: (id: string) => void;
   frame?: MapFrame;
+  selectAny?: boolean;
 }) {
   const view = frame ?? { x: 0, y: 0, width: mapView.width, height: mapView.height };
   const byId = new Map(active.map((region) => [region.id, region]));
@@ -48,13 +61,15 @@ export function EurasiaMap({
   function shapePath(shape: MapShape, hotspot: boolean) {
     const region = byId.get(shape.id);
     const paint = paintFor(region, hotspot);
-    const interactive = Boolean(region?.interactive && onSelect);
+    const interactive = Boolean(onSelect && region?.interactive !== false && (region?.interactive || selectAny));
     return (
       <path
         key={shape.id}
         d={shape.d}
         data-region-id={shape.id}
         data-tone={region?.tone ?? "idle"}
+        data-effect={region?.effect ?? ""}
+        className={region?.effect ? flashClass[region.effect] : undefined}
         fill={paint.fill}
         stroke={paint.stroke}
         strokeWidth={hotspot ? 2.6 : 1.4}
@@ -95,7 +110,11 @@ export function EurasiaMap({
         const shape = landById.get(region.id) ?? featureById.get(region.id);
         if (!shape || !region.letter) return null;
         const light =
-          region.tone === "selected" || region.tone === "correct" || region.tone === "wrong" || region.tone === "marked";
+          region.tone === "selected" ||
+          region.tone === "correct" ||
+          region.tone === "wrong" ||
+          region.tone === "marked" ||
+          region.tone === "missed";
         return (
           <text
             key={`letter-${region.id}`}

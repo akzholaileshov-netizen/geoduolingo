@@ -103,3 +103,66 @@ input {
   height: 14px;
   animation: confetti-fall 1.7s ease-in forwards;
 }
+
+@keyframes map-flash-yellow {
+  0%,
+  100% {
+    fill: #facc15;
+  }
+}
+
+.map-flash-yellow {
+  animation: map-flash-yellow 0.4s linear;
+}
+
+@keyframes map-flash-orange {
+  0%,
+  100% {
+    fill: #fb923c;
+  }
+}
+
+.map-flash-orange {
+  animation: map-flash-orange 0.4s linear;
+}
+
+@keyframes map-miss-pulse {
+  0% {
+    fill: #ef4444;
+  }
+  16% {
+    fill: #ffffff;
+  }
+  33% {
+    fill: #ef4444;
+  }
+  50% {
+    fill: #ffffff;
+  }
+  66% {
+    fill: #ef4444;
+  }
+  83% {
+    fill: #ffffff;
+  }
+  100% {
+    fill: #ef4444;
+  }
+}
+
+.map-miss-pulse {
+  animation: map-miss-pulse 1.2s linear forwards;
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-110%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
