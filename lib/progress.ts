@@ -9,10 +9,11 @@ export function currentCompletions(completed: readonly string[]) {
   return completed.filter((id) => currentLessonIds.has(id));
 }
 
-export function isSectionComplete(lessonId: string, completed: readonly string[]) {
+export function isSectionComplete(lessonId: string, completed: readonly string[]): boolean {
   const lesson = findLesson(lessonId);
   if (!lesson) return false;
   if (completed.includes(lessonId)) return true;
+  if (lesson.subTopics.length === 0) return isLessonUnlocked(lessonId, completed);
   return lesson.subTopics.every((topic) => completed.includes(topic.id));
 }
 
@@ -52,7 +53,7 @@ export function nextStreak(streak: number, lastActiveDate: string | null, today 
   return { streak: 1, lastActiveDate: today };
 }
 
-export function isLessonUnlocked(lessonId: string, completed: readonly string[]) {
+export function isLessonUnlocked(lessonId: string, completed: readonly string[]): boolean {
   const lesson = findLesson(lessonId);
   if (!lesson) return false;
   const continent = getContinent(lesson.continentId);

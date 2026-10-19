@@ -40,7 +40,6 @@ const landAlias: Record<string, string> = {
   "land-isl": "iceland-country",
   "land-nld": "netherlands",
   "land-bel": "belgium",
-  "land-irl": "ireland-country",
   "land-prt": "portugal",
   "land-hrv": "croatia",
   "land-alb": "albania",
@@ -52,6 +51,20 @@ const landAlias: Record<string, string> = {
   "land-hun": "hungary",
   "land-che": "switzerland",
   "land-svk": "slovakia",
+  "land-rus": "russia",
+  "land-arm": "armenia",
+  "land-aze": "azerbaijan",
+  "land-geo": "georgia",
+  "land-brn": "brunei",
+  "land-svn": "slovenia",
+  "land-bih": "bosnia",
+  "land-mkd": "macedonia",
+  "land-srb": "serbia",
+  "land-mne": "montenegro",
+  "land-qat": "qatar",
+  "land-kwt": "kuwait",
+  "land-jor": "jordan",
+  "land-lka": "sri-lanka-country",
 };
 
 export const regionLand: MapShape[] = landShapes.map((shape) => ({
