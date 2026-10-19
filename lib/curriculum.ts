@@ -429,11 +429,13 @@ export function questionsForLesson(quizId: string): Question[] {
   const placeIds = quiz.subTopic.placeIds;
   if (!placeIds.length) return [];
   const pool = quiz.lesson.placeIds;
-  const target = Math.min(10, Math.max(5, placeIds.length));
+  // PDF places stay first in placeIds, so the ten questions keep them ahead of later additions.
+  const quizPlaces = placeIds.slice(0, 10);
+  const target = 10;
   const questions: Question[] = [];
   let cursor = 0;
   while (questions.length < target) {
-    const placeId = placeIds[cursor % placeIds.length];
+    const placeId = quizPlaces[cursor % quizPlaces.length];
     if (!placeId) break;
     const place = getPlace(placeId);
     if (questions.length % 2 === 0) {
@@ -604,7 +606,7 @@ function validateCurriculum() {
         }
       }
       const questions = questionsForLesson(topic.id);
-      if (questions.length < 5 || questions.length > 10) throw new Error(`${topic.id} question count ${questions.length}`);
+      if (questions.length !== 10) throw new Error(`${topic.id} question count ${questions.length}`);
       const types = new Set(questions.map((question) => question.type));
       if (!types.has("pinpoint") || !types.has("identify")) throw new Error(`${topic.id} needs both task types`);
       for (const question of questions) {

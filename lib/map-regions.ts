@@ -65,6 +65,12 @@ const landAlias: Record<string, string> = {
   "land-kwt": "kuwait",
   "land-jor": "jordan",
   "land-lka": "sri-lanka-country",
+  "land-twn": "taiwan-country",
+  "land-est": "estonia",
+  "land-lva": "latvia",
+  "land-ltu": "lithuania",
+  "land-irl": "ireland-country",
+  "land-lux": "luxembourg",
 };
 
 export const regionLand: MapShape[] = landShapes.map((shape) => ({
