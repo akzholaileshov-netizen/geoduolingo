@@ -1,4 +1,10 @@
-import { getLesson, getModule, modules } from "@/lib/curriculum";
+import { findLesson, getModule, modules } from "@/lib/curriculum";
+
+const currentLessonIds = new Set(modules.flatMap((module) => module.lessonIds));
+
+export function currentCompletions(completed: readonly string[]) {
+  return completed.filter((id) => currentLessonIds.has(id));
+}
 
 export function levelFromXp(xp: number) {
   return Math.floor(Math.max(0, xp) / 100) + 1;
@@ -33,25 +39,30 @@ export function nextStreak(streak: number, lastActiveDate: string | null, today 
 }
 
 export function isLessonUnlocked(lessonId: string, completed: readonly string[]) {
-  const lesson = getLesson(lessonId);
+  const lesson = findLesson(lessonId);
+  if (!lesson) return false;
+  const done = currentCompletions(completed);
   const skillModule = getModule(lesson.moduleId);
   const index = skillModule.lessonIds.indexOf(lessonId);
-  if (index > 0) return completed.includes(skillModule.lessonIds[index - 1] ?? "");
+  if (index < 0) return false;
+  if (index > 0) return done.includes(skillModule.lessonIds[index - 1] ?? "");
   const moduleIndex = modules.findIndex((item) => item.id === skillModule.id);
   if (moduleIndex <= 0) return true;
   const previous = modules[moduleIndex - 1];
   if (!previous) return true;
-  return previous.lessonIds.every((id) => completed.includes(id));
+  return previous.lessonIds.every((id) => done.includes(id));
 }
 
 export function isModuleFinished(moduleId: string, completed: readonly string[]) {
-  return getModule(moduleId).lessonIds.every((id) => completed.includes(id));
+  const done = new Set(currentCompletions(completed));
+  return getModule(moduleId).lessonIds.every((id) => done.has(id));
 }
 
 export type LessonVisualState = "locked" | "active" | "done";
 
 export function lessonVisualState(lessonId: string, completed: readonly string[]): LessonVisualState {
-  if (completed.includes(lessonId)) return "done";
-  if (!isLessonUnlocked(lessonId, completed)) return "locked";
+  const done = currentCompletions(completed);
+  if (done.includes(lessonId)) return "done";
+  if (!isLessonUnlocked(lessonId, done)) return "locked";
   return "active";
 }
