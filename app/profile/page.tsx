@@ -1,7 +1,10 @@
 "use client";
 
 import { Check, Flame, LogOut, Star } from "lucide-react";
+import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { AvatarPicker } from "@/components/AvatarPicker";
+import { FlagAvatar } from "@/components/FlagAvatar";
 import { DuoButton } from "@/components/DuoButton";
 import { modules } from "@/lib/curriculum";
 import { isModuleFinished, levelFromXp } from "@/lib/progress";
@@ -10,14 +13,28 @@ import { useAppStore } from "@/store/useAppStore";
 export default function ProfilePage() {
   const profile = useAppStore((state) => state.profile);
   const logout = useAppStore((state) => state.logout);
+  const setAvatarFlag = useAppStore((state) => state.setAvatarFlag);
+  const [open, setOpen] = useState(false);
   const level = levelFromXp(profile?.xp ?? 0);
   const finished = modules.filter((module) => isModuleFinished(module.id, profile?.completedLessonIds ?? []));
 
   return (
     <AppShell>
       <section className="rounded-[28px] border-2 border-[#e5e5e5] bg-white p-5 text-center">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#58cc02] text-3xl font-extrabold text-white">
-          {profile?.displayName.slice(0, 1).toUpperCase()}
+        <p className="text-sm font-extrabold text-[#1cb0f6]">Аватар</p>
+        {profile?.avatarFlag ? (
+          <div className="mx-auto mt-3 w-fit" data-testid="profile-avatar">
+            <FlagAvatar code={profile.avatarFlag} size={80} />
+          </div>
+        ) : (
+          <div className="mx-auto mt-3 grid h-20 w-20 place-items-center rounded-full bg-[#58cc02] text-3xl font-extrabold text-white">
+            {profile?.displayName.slice(0, 1).toUpperCase()}
+          </div>
+        )}
+        <div className="mt-3">
+          <DuoButton data-testid="open-avatar-picker" onClick={() => setOpen(true)}>
+            Туды таңда
+          </DuoButton>
         </div>
         <h1 className="mt-3 text-2xl font-extrabold">{profile?.displayName}</h1>
         <p className="text-sm font-bold text-[#777]">{profile?.email}</p>
@@ -52,6 +69,15 @@ export default function ProfilePage() {
           })}
         </ul>
       </section>
+      <AvatarPicker
+        open={open}
+        selected={profile?.avatarFlag ?? null}
+        onClose={() => setOpen(false)}
+        onPick={(code) => {
+          setAvatarFlag(code);
+          setOpen(false);
+        }}
+      />
       <div className="mt-4">
         <DuoButton variant="white" onClick={() => void logout()}>
           <span className="inline-flex items-center justify-center gap-2">

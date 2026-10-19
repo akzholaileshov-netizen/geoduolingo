@@ -6,6 +6,7 @@ export type Profile = {
   streak: number;
   lastActiveDate: string | null;
   completedLessonIds: string[];
+  avatarFlag: string | null;
 };
 
 export type AnswerMark = "pending" | "correct" | "wrong";

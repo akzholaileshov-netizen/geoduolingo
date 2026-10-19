@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { playTone } from "@/lib/audio";
 import { questionsForLesson, findLesson } from "@/lib/curriculum";
+import { isFlagCode } from "@/lib/flags";
 import { nextStreak } from "@/lib/progress";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { MAX_HEARTS, XP_PER_CORRECT, type AuthResult, type LessonSession, type Profile, type Selection } from "@/lib/types";
@@ -14,6 +15,7 @@ type Db = {
   version: 1;
   currentEmail: string | null;
   users: Record<string, Profile>;
+  avatars: Record<string, string>;
 };
 
 type AppState = {
@@ -31,11 +33,22 @@ type AppState = {
   setChoice: (optionId: string) => void;
   checkAnswer: () => void;
   nextQuestion: () => void;
+  setAvatarFlag: (code: string) => void;
   clearSaveError: () => void;
 };
 
 function emptyDb(): Db {
-  return { version: 1, currentEmail: null, users: {} };
+  return { version: 1, currentEmail: null, users: {}, avatars: {} };
+}
+
+function readFlag(value: unknown) {
+  return isFlagCode(value) ? value : null;
+}
+
+function missingAvatarColumn(error: { message?: string; code?: string; details?: string } | null) {
+  if (!error) return false;
+  const text = `${error.code ?? ""} ${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+  return text.includes("avatar_flag") || text.includes("42703") || text.includes("pgrst204");
 }
 
 function isProfile(value: unknown): value is Profile {
@@ -60,14 +73,26 @@ function loadDb(): Db {
     if (!raw) return emptyDb();
     const parsed = JSON.parse(raw) as Partial<Db>;
     if (parsed.version !== 1 || !parsed.users || typeof parsed.users !== "object") return emptyDb();
+    const avatars: Record<string, string> = {};
+    if (parsed.avatars && typeof parsed.avatars === "object") {
+      for (const [id, code] of Object.entries(parsed.avatars)) {
+        const flag = readFlag(code);
+        if (flag) avatars[id] = flag;
+      }
+    }
     const users: Record<string, Profile> = {};
     for (const [email, profile] of Object.entries(parsed.users)) {
-      if (isProfile(profile)) users[email] = profile;
+      if (isProfile(profile)) {
+        const avatarFlag = readFlag(profile.avatarFlag) ?? avatars[profile.id] ?? null;
+        users[email] = { ...profile, avatarFlag };
+        if (avatarFlag) avatars[profile.id] = avatarFlag;
+      }
     }
     return {
       version: 1,
       currentEmail: typeof parsed.currentEmail === "string" ? parsed.currentEmail : null,
       users,
+      avatars,
     };
   } catch {
     return emptyDb();
@@ -82,7 +107,20 @@ function saveDemoProfile(profile: Profile) {
   const db = loadDb();
   db.users[profile.email] = profile;
   db.currentEmail = profile.email;
+  if (profile.avatarFlag) db.avatars[profile.id] = profile.avatarFlag;
   saveDb(db);
+}
+
+function rememberAvatar(profile: Profile) {
+  if (!profile.avatarFlag) return;
+  const db = loadDb();
+  db.avatars[profile.id] = profile.avatarFlag;
+  if (db.users[profile.email]) db.users[profile.email] = { ...db.users[profile.email], avatarFlag: profile.avatarFlag };
+  saveDb(db);
+}
+
+function localAvatar(id: string) {
+  return loadDb().avatars[id] ?? null;
 }
 
 function nameFromEmail(email: string) {
@@ -99,6 +137,7 @@ function makeProfile(email: string, displayName: string, id = `demo-${email}`): 
     streak: 0,
     lastActiveDate: null,
     completedLessonIds: [],
+    avatarFlag: null,
   };
 }
 
@@ -136,17 +175,45 @@ function numberFrom(value: unknown) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+const profileColumns = "id, email, display_name, xp, streak, last_active_date";
+
+async function readProfileRow(userId: string) {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase is not configured");
+  const withFlag = await supabase.from("profiles").select(`${profileColumns}, avatar_flag`).eq("id", userId).maybeSingle();
+  if (!withFlag.error) return withFlag.data as Record<string, unknown> | null;
+  if (!missingAvatarColumn(withFlag.error)) throw withFlag.error;
+  const plain = await supabase.from("profiles").select(profileColumns).eq("id", userId).maybeSingle();
+  if (plain.error) throw plain.error;
+  return plain.data as Record<string, unknown> | null;
+}
+
+async function upsertProfile(profile: Profile) {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  const base = {
+    id: profile.id,
+    email: profile.email,
+    display_name: profile.displayName,
+    xp: profile.xp,
+    streak: profile.streak,
+    last_active_date: profile.lastActiveDate,
+  };
+  const payload = profile.avatarFlag ? { ...base, avatar_flag: profile.avatarFlag } : base;
+  const first = await supabase.from("profiles").upsert(payload);
+  if (!first.error) return;
+  if (profile.avatarFlag && missingAvatarColumn(first.error)) {
+    const second = await supabase.from("profiles").upsert(base);
+    if (second.error) throw second.error;
+    return;
+  }
+  throw first.error;
+}
+
 async function profileFromUser(user: User): Promise<Profile> {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Supabase is not configured");
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, email, display_name, xp, streak, last_active_date")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (error) throw error;
-
-  let row = data as Record<string, unknown> | null;
+  let row = await readProfileRow(user.id);
   if (!row) {
     const displayName =
       typeof user.user_metadata?.display_name === "string" && user.user_metadata.display_name.trim()
@@ -160,13 +227,9 @@ async function profileFromUser(user: User): Promise<Profile> {
       streak: 0,
       last_active_date: null,
     };
-    const { data: created, error: insertError } = await supabase
-      .from("profiles")
-      .insert(inserted)
-      .select("id, email, display_name, xp, streak, last_active_date")
-      .single();
+    const { error: insertError } = await supabase.from("profiles").insert(inserted);
     if (insertError) throw insertError;
-    row = created as Record<string, unknown>;
+    row = (await readProfileRow(user.id)) ?? { ...inserted, avatar_flag: null };
   }
 
   const { data: progress, error: progressError } = await supabase
@@ -186,6 +249,8 @@ async function profileFromUser(user: User): Promise<Profile> {
       ? row.display_name
       : nameFromEmail(email);
 
+  const remoteFlag = readFlag(row.avatar_flag);
+  const avatarFlag = remoteFlag ?? localAvatar(user.id);
   return {
     id: user.id,
     email,
@@ -194,6 +259,7 @@ async function profileFromUser(user: User): Promise<Profile> {
     streak: numberFrom(row.streak),
     lastActiveDate: typeof row.last_active_date === "string" ? row.last_active_date : null,
     completedLessonIds,
+    avatarFlag,
   };
 }
 
@@ -204,15 +270,7 @@ async function persistOutcome(profile: Profile, session: LessonSession, passed: 
   }
   const supabase = getSupabase();
   if (!supabase) return;
-  const { error: profileError } = await supabase.from("profiles").upsert({
-    id: profile.id,
-    email: profile.email,
-    display_name: profile.displayName,
-    xp: profile.xp,
-    streak: profile.streak,
-    last_active_date: profile.lastActiveDate,
-  });
-  if (profileError) throw profileError;
+  await upsertProfile(profile);
   if (!passed) return;
   const { error } = await supabase.from("lesson_progress").upsert(
     {
@@ -326,15 +384,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       const profile = await profileFromUser(data.user);
       const named = { ...profile, displayName: name };
-      const { error: nameError } = await supabase.from("profiles").upsert({
-        id: named.id,
-        email: named.email,
-        display_name: name,
-        xp: named.xp,
-        streak: named.streak,
-        last_active_date: named.lastActiveDate,
-      });
-      if (nameError) return { ok: false, message: "Профиль сақталмады. Қайта көріңіз." };
+      try {
+        await upsertProfile(named);
+      } catch {
+        return { ok: false, message: "Профиль сақталмады. Қайта көріңіз." };
+      }
       set({ profile: named, saveError: null });
       return { ok: true };
     } catch (error) {
@@ -461,6 +515,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ profile: nextProfile, session: nextSession });
     void persistOutcome(nextProfile, nextSession, passed).catch(() => {
       set({ saveError: "Прогресс сақталмады. Интернетті тексеріп, сабақты қайта аяқта." });
+    });
+  },
+
+  setAvatarFlag: (code) => {
+    const profile = get().profile;
+    if (!profile || !isFlagCode(code)) return;
+    const next = { ...profile, avatarFlag: code };
+    set({ profile: next });
+    if (!isSupabaseConfigured) {
+      saveDemoProfile(next);
+      return;
+    }
+    rememberAvatar(next);
+    void upsertProfile(next).catch(() => {
+      // The flag stays on this device when the remote column is missing.
     });
   },
 

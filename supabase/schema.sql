@@ -8,8 +8,11 @@ create table if not exists public.profiles (
   xp integer not null default 0 check (xp >= 0),
   streak integer not null default 0 check (streak >= 0),
   last_active_date date,
+  avatar_flag text,
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists avatar_flag text;
 
 create table if not exists public.lesson_progress (
   id uuid primary key default gen_random_uuid(),
@@ -28,7 +31,7 @@ create index if not exists lesson_progress_user_idx on public.lesson_progress (u
 
 create or replace view public.leaderboard
 with (security_invoker = true) as
-select id, display_name, xp, streak
+select id, display_name, xp, streak, avatar_flag
 from public.profiles;
 
 alter table public.profiles enable row level security;

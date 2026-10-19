@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
+import { FlagAvatar } from "@/components/FlagAvatar";
 import { SoundToggle } from "@/components/SoundToggle";
 import { Splash } from "@/components/Providers";
 
@@ -43,6 +44,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-lg font-extrabold text-[#3c3c3c]">GeoLingo</span>
           </Link>
           <div className="flex items-center gap-3 font-extrabold">
+            {profile.avatarFlag ? (
+              <span data-testid="header-avatar">
+                <FlagAvatar code={profile.avatarFlag} size={28} />
+              </span>
+            ) : null}
             <span className="flex items-center gap-1 text-[#ff9600]" data-testid="header-streak">
               <Flame size={18} fill="#ff9600" />
               {profile.streak}

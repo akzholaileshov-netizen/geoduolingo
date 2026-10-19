@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { FlagAvatar } from "@/components/FlagAvatar";
+import { isFlagCode } from "@/lib/flags";
 import { buildLeaderboard, fetchRemoteLeaderboard, type BoardEntry } from "@/lib/leaderboard";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -25,7 +27,13 @@ export default function LeaderboardPage() {
 
   const rows = profile
     ? buildLeaderboard(
-        { id: profile.id, displayName: profile.displayName, xp: profile.xp, seeded: false },
+        {
+          id: profile.id,
+          displayName: profile.displayName,
+          xp: profile.xp,
+          seeded: false,
+          avatarFlag: profile.avatarFlag,
+        },
         extra,
       )
     : [];
@@ -57,6 +65,11 @@ export default function LeaderboardPage() {
               >
                 {index + 1}
               </span>
+              {isFlagCode(mine ? profile?.avatarFlag : row.avatarFlag) ? (
+                <span data-testid={mine ? "leaderboard-avatar" : undefined}>
+                  <FlagAvatar code={(mine ? profile?.avatarFlag : row.avatarFlag) as string} size={32} />
+                </span>
+              ) : null}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-extrabold">
                   {row.displayName}
