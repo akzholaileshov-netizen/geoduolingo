@@ -1,5 +1,6 @@
 import { extraShapes } from "@/lib/extra-shapes";
 import { featureShapes, landShapes, mapView, type MapShape } from "@/lib/eurasia-map";
+import { outlineShapes } from "@/lib/outline-shapes";
 
 const landAlias: Record<string, string> = {
   "land-kor": "south-korea",
@@ -20,10 +21,12 @@ export const regionLand: MapShape[] = landShapes.map((shape) => ({
 }));
 
 const extraById = new Map(extraShapes.map((shape) => [shape.id, shape]));
+const outlineById = new Map(outlineShapes.map((shape) => [shape.id, shape]));
 
 export const regionFeatures: MapShape[] = [
-  ...featureShapes.filter((shape) => !extraById.has(shape.id)),
-  ...extraShapes,
+  ...featureShapes.filter((shape) => !extraById.has(shape.id) && !outlineById.has(shape.id)),
+  ...extraShapes.filter((shape) => !outlineById.has(shape.id)),
+  ...outlineShapes,
 ];
 
 const landById = new Map(regionLand.map((shape) => [shape.id, shape]));
@@ -78,6 +81,15 @@ export function frameFor(ids: readonly string[]) {
     }
     const feature = featureById.get(id);
     if (!feature) continue;
+    const arc = /[aA]/.test(feature.d);
+    if (!arc) {
+      const bounds = landBounds(feature.d);
+      minX = Math.min(minX, bounds.minX);
+      minY = Math.min(minY, bounds.minY);
+      maxX = Math.max(maxX, bounds.maxX);
+      maxY = Math.max(maxY, bounds.maxY);
+      continue;
+    }
     const radii = featureRadii(feature);
     minX = Math.min(minX, feature.cx - radii.rx);
     minY = Math.min(minY, feature.cy - radii.ry);

@@ -513,11 +513,13 @@ export function questionsForLesson(lessonId: string): Question[] {
       return { id, type, placeId, promptKk: `${place.accusativeKk} картадан тап` };
     }
     if (type === "identify") {
+      const named =
+        place.kind === "country" ? "Бұл қай ел?" : place.kind === "island" ? "Бұл қай арал?" : place.kind === "peninsula" ? "Бұл қай түбек?" : null;
       return {
         id,
         type,
         placeId,
-        promptKk: index === 1 ? "Картадағы белгі қай нысан?" : "Бұл нысан қалай аталады?",
+        promptKk: named ?? (index === 1 ? "Картадағы белгі қай нысан?" : "Бұл нысан қалай аталады?"),
         optionIds: optionIds(placeId, lesson.placeIds, index),
       };
     }
@@ -639,6 +641,10 @@ function validateCurriculum() {
         if (!landShape(place.id)) throw new Error(`Missing country outline ${place.id}`);
       } else if (!featureShape(place.id)) {
         throw new Error(`Missing hotspot ${place.id}`);
+      }
+      if (place.kind === "island" || place.kind === "peninsula") {
+        const outline = featureShape(place.id);
+        if (!outline || /[aA]/.test(outline.d)) throw new Error(`${place.id} must be a filled outline, not a circle`);
       }
       return place;
     });
