@@ -8,8 +8,8 @@ import { SoundToggle } from "@/components/SoundToggle";
 import { Splash } from "@/components/Providers";
 import { useRequireProfile } from "@/components/AppShell";
 import { playTone } from "@/lib/audio";
-import { findLesson, nextLessonId } from "@/lib/curriculum";
-import { lessonVisualState, levelFromXp } from "@/lib/progress";
+import { findQuiz, nextLessonId, nextSubTopic } from "@/lib/curriculum";
+import { lessonVisualState, levelFromXp, subTopicVisualState } from "@/lib/progress";
 import { useAppStore } from "@/store/useAppStore";
 
 const confetti = [
@@ -32,7 +32,7 @@ const confetti = [
 export function ResultScreen() {
   const params = useParams<{ lessonId: string }>();
   const lessonId = params.lessonId;
-  const lesson = findLesson(lessonId);
+  const quiz = findQuiz(lessonId);
   const profile = useRequireProfile();
   const session = useAppStore((state) => state.session);
   const router = useRouter();
@@ -56,10 +56,21 @@ export function ResultScreen() {
     if (session.status === "active") router.replace(`/lesson/${lessonId}`);
   }, [profile, session, lessonId, router]);
 
-  if (!profile || !ready || !lesson || !session) return <Splash />;
+  if (!profile || !ready || !quiz || !session) return <Splash />;
 
-  const nextId = nextLessonId(lesson.id);
-  const unlockedNext = Boolean(passed && nextId && lessonVisualState(nextId, profile.completedLessonIds) === "active");
+  const nextTopic = nextSubTopic(quiz.subTopic.id);
+  const nextSection = nextLessonId(quiz.lesson.id);
+  const completed = profile.completedLessonIds;
+  const sectionHref = `/continent/${quiz.lesson.continentId}/${quiz.lesson.id}`;
+  const continueHref = !passed
+    ? sectionHref
+    : nextTopic
+      ? subTopicVisualState(nextTopic.id, completed) === "active"
+        ? `${sectionHref}?focus=${nextTopic.id}`
+        : sectionHref
+      : nextSection && lessonVisualState(nextSection, completed) === "active"
+        ? `/continent/${quiz.lesson.continentId}?focus=${nextSection}`
+        : `/continent/${quiz.lesson.continentId}`;
   const previousLevel = levelFromXp(profile.xp - session.xpEarned);
   const level = levelFromXp(profile.xp);
   const streakGrew = passed && profile.streak > session.streakBefore;
@@ -86,7 +97,7 @@ export function ResultScreen() {
       <h1 className="mt-4 text-center text-3xl font-extrabold" data-testid="result-status">
         {passed ? "Керемет!" : "Жүректер бітті"}
       </h1>
-      <p className="mt-1 text-center font-bold text-[#777]">{lesson.titleKk}</p>
+      <p className="mt-1 text-center font-bold text-[#777]">{quiz.subTopic.titleKk}</p>
       <div className="mt-6 space-y-3">
         <Row testId="result-xp" icon={<Star fill="#ffc800" className="text-[#ffc800]" />} label="Жиналған XP" value={`+${session.xpEarned}`} />
         <Row testId="result-mistakes" icon={<XCircle className="text-[#ff4b4b]" />} label="Қателер" value={String(session.mistakes)} />
@@ -105,19 +116,16 @@ export function ResultScreen() {
       <div className="mt-auto space-y-3 pt-8">
         <DuoButton
           data-testid="continue-button"
-          onClick={() => {
-            const focus = unlockedNext && nextId ? `?focus=${nextId}` : "";
-            router.push(`/continent/${lesson.continentId}${focus}`);
-          }}
+          onClick={() => router.push(continueHref)}
         >
           Жалғастыру
         </DuoButton>
         {!passed ? (
-          <DuoButton variant="white" onClick={() => router.push(`/lesson/${lesson.id}`)}>
+          <DuoButton variant="white" onClick={() => router.push(`/lesson/${quiz.subTopic.id}`)}>
             Қайталау
           </DuoButton>
         ) : null}
-        <DuoButton variant="white" onClick={() => router.push(`/continent/${lesson.continentId}`)}>
+        <DuoButton variant="white" onClick={() => router.push(`/continent/${quiz.lesson.continentId}`)}>
           Артқа
         </DuoButton>
       </div>

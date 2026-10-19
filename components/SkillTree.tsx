@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { modules } from "@/lib/curriculum";
+import { completedSectionCount } from "@/lib/progress";
 import { useAppStore } from "@/store/useAppStore";
 
 export function SkillTree() {
@@ -13,7 +14,7 @@ export function SkillTree() {
   return (
     <div className="space-y-5">
       {modules.map((module) => {
-        const done = module.lessonIds.filter((id) => completed.includes(id)).length;
+        const done = completedSectionCount(module.id, completed);
         return (
           <button
             key={module.id}

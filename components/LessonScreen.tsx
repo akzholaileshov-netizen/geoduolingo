@@ -9,7 +9,7 @@ import { unlockAudio } from "@/lib/audio";
 import { EurasiaMap, type MapRegionState, type RegionTone } from "@/components/EurasiaMap";
 import { Splash } from "@/components/Providers";
 import { useRequireProfile } from "@/components/AppShell";
-import { findLesson, getContinent, getLesson, getPlace, questionsForLesson } from "@/lib/curriculum";
+import { findLesson, findQuiz, getPlace, questionsForLesson } from "@/lib/curriculum";
 import { frameFor } from "@/lib/map-regions";
 import { XP_PER_CORRECT } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
@@ -19,7 +19,8 @@ const letters = ["A", "B", "C", "D"];
 export function LessonScreen() {
   const params = useParams<{ lessonId: string }>();
   const lessonId = params.lessonId;
-  const lesson = findLesson(lessonId);
+  const quiz = findQuiz(lessonId);
+  const sectionOnly = findLesson(lessonId);
   const profile = useRequireProfile();
   const session = useAppStore((state) => state.session);
   const startLesson = useAppStore((state) => state.startLesson);
@@ -29,20 +30,25 @@ export function LessonScreen() {
   const nextQuestion = useAppStore((state) => state.nextQuestion);
   const router = useRouter();
 
+  useEffect(() => {
+    if (quiz || !sectionOnly) return;
+    router.replace(`/continent/${sectionOnly.continentId}/${sectionOnly.id}`);
+  }, [quiz, sectionOnly, router]);
+
   const startedLesson = useRef<string | null>(null);
   useEffect(() => {
-    if (!profile || !lesson) return;
-    if (startedLesson.current === lesson.id) return;
-    startedLesson.current = lesson.id;
-    startLesson(lesson.id);
-  }, [profile, lesson, startLesson]);
+    if (!profile || !quiz) return;
+    if (startedLesson.current === quiz.subTopic.id) return;
+    startedLesson.current = quiz.subTopic.id;
+    startLesson(quiz.subTopic.id);
+  }, [profile, quiz, startLesson]);
 
-  const questions = lesson ? questionsForLesson(lesson.id) : [];
+  const questions = quiz ? questionsForLesson(quiz.subTopic.id) : [];
   const active = session?.lessonId === lessonId && session.status === "active" ? session : null;
   const question = active ? questions[active.index] : undefined;
 
-  if (!profile) return <Splash />;
-  if (!lesson) {
+  if (!profile || sectionOnly) return <Splash />;
+  if (!quiz) {
     return (
       <div className="flex min-h-dvh items-center justify-center px-6 text-center">
         <div>
@@ -59,12 +65,12 @@ export function LessonScreen() {
   const place = getPlace(question.placeId);
   const selectedChoice = active.selected?.type === "choice" ? active.selected.optionId : null;
   const selectedRegion = active.selected?.type === "pinpoint" ? active.selected.regionId : null;
-  const continent = getContinent(lesson.continentId);
-  const frame = frameFor(continent.lessonIds.flatMap((id) => getLesson(id).placeIds));
+  const placeIds = quiz.subTopic.placeIds;
+  const frame = frameFor(placeIds);
 
   let mapRegions: MapRegionState[] = [];
   if (question.type === "pinpoint") {
-    mapRegions = lesson.placeIds.map((id) => {
+    mapRegions = placeIds.map((id) => {
       let tone: RegionTone = "idle";
       if (active.checked) {
         if (id === question.placeId) tone = "correct";
@@ -94,10 +100,10 @@ export function LessonScreen() {
   const correct = active.lastResult?.correct ?? false;
   const ending = active.hearts <= 0 || active.index >= questions.length - 1;
 
-  const continentId = lesson.continentId;
+  const sectionHref = `/continent/${quiz.lesson.continentId}/${quiz.lesson.id}`;
   function quit() {
     const leave = window.confirm("Сабақтан шыққың келе ме? Бұл әрекеттің ұпайы сақталмайды.");
-    if (leave) router.push(`/continent/${continentId}`);
+    if (leave) router.push(sectionHref);
   }
 
   function handleNext() {
@@ -137,7 +143,7 @@ export function LessonScreen() {
         <SoundToggle />
       </header>
       <p className="px-4 text-center text-xs font-extrabold uppercase tracking-wide text-[#afafaf]">
-        {lesson.titleKk} · {active.index + 1}/{questions.length}
+        {quiz.subTopic.titleKk} · {active.index + 1}/{questions.length}
       </p>
       <h1 className="px-5 pt-2 text-center text-xl font-extrabold leading-tight" data-testid="lesson-prompt">
         {question.promptKk}
@@ -147,7 +153,7 @@ export function LessonScreen() {
           ? "Дұрыс аймақты картадан бас."
           : question.type === "pick"
             ? "Дұрыс әріпті картадан немесе төменнен таңда."
-            : "Төрт нұсқаның бірін таңда."}
+            : "Нұсқаның бірін таңда."}
       </p>
       <div className="relative mx-4 min-h-[280px] flex-1" data-testid="map-root">
         <div className="absolute inset-0 overflow-hidden rounded-[28px] border-2 border-[#e5e5e5] bg-[#d7ecff]">

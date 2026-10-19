@@ -1,5 +1,6 @@
 import { haversineKm } from "@/lib/geo";
 import { featureShape, landShape } from "@/lib/map-regions";
+import { extraPlaces, subTopicsByLesson } from "@/lib/regional-topics";
 
 export type PlaceKind =
   | "country"
@@ -48,6 +49,13 @@ export type Continent = {
   lessonIds: string[];
 };
 
+export type SubTopic = {
+  id: string;
+  titleKk: string;
+  order: number;
+  placeIds: string[];
+};
+
 export type Lesson = {
   id: string;
   moduleId: string;
@@ -55,6 +63,12 @@ export type Lesson = {
   titleKk: string;
   order: number;
   placeIds: string[];
+  subTopics: SubTopic[];
+};
+
+export type Quiz = {
+  lesson: Lesson;
+  subTopic: SubTopic;
 };
 
 export type PinpointQuestion = {
@@ -74,7 +88,7 @@ export type ChoiceQuestion = {
 
 export type Question = PinpointQuestion | ChoiceQuestion;
 
-export const places: Place[] = [
+const basePlaces: Place[] = [
   { id: "kazakhstan", nameKk: "Қазақстан", accusativeKk: "Қазақстанды", lat: 48.5, lng: 66.9, radiusKm: 520, kind: "country", continent: "asia" },
   { id: "china", nameKk: "Қытай", accusativeKk: "Қытайды", lat: 34.3, lng: 108.9, radiusKm: 940, kind: "country", continent: "asia" },
   { id: "india", nameKk: "Үндістан", accusativeKk: "Үндістанды", lat: 22.5, lng: 79, radiusKm: 820, kind: "country", continent: "asia" },
@@ -241,9 +255,38 @@ export const places: Place[] = [
   { id: "svalbard-desert", nameKk: "Свальбард шөлі", accusativeKk: "Свальбард шөлін", lat: 78.2, lng: 16, radiusKm: 60, kind: "desert", continent: "europe" },
 ];
 
+export const places: Place[] = [...basePlaces, ...extraPlaces];
+
 const lessonTitles = ["Мемлекеттер", "Аралдар", "Түбектер", "Таулар", "Жазықтар", "Өзендер", "Көлдер", "Теңіздер", "Шығанақтар", "Шөлдер"] as const;
 
-export const lessons: Lesson[] = [
+function withSubTopics(seed: {
+  id: string;
+  moduleId: string;
+  continentId: ContinentId;
+  titleKk: string;
+  order: number;
+  placeIds: string[];
+}): Lesson {
+  const plans = subTopicsByLesson[seed.id];
+  if (!plans?.length) throw new Error(`Missing subtopics for ${seed.id}`);
+  const subTopics = plans.map((plan, index) => ({
+    id: plan.id,
+    titleKk: plan.titleKk,
+    order: index + 1,
+    placeIds: [...plan.placeIds],
+  }));
+  return {
+    id: seed.id,
+    moduleId: seed.moduleId,
+    continentId: seed.continentId,
+    titleKk: seed.titleKk,
+    order: seed.order,
+    subTopics,
+    placeIds: subTopics.flatMap((topic) => topic.placeIds),
+  };
+}
+
+export const lessons: Lesson[] = ([
   {
     id: "asia-states",
     moduleId: "eurasia",
@@ -404,7 +447,14 @@ export const lessons: Lesson[] = [
     order: 10,
     placeIds: ["tabernas", "bardenas", "accona", "oltenia", "bledow", "oleshky", "sprengisandur", "svalbard-desert"],
   },
-];
+] satisfies Array<{
+  id: string;
+  moduleId: string;
+  continentId: ContinentId;
+  titleKk: string;
+  order: number;
+  placeIds: string[];
+}>).map((seed) => withSubTopics(seed));
 
 export const continents: Continent[] = [
   {
@@ -439,6 +489,9 @@ export const modules: Module[] = [
 
 const placeMap = new Map(places.map((place) => [place.id, place]));
 const lessonMap = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+const quizMap = new Map<string, Quiz>(
+  lessons.flatMap((lesson) => lesson.subTopics.map((subTopic) => [subTopic.id, { lesson, subTopic }] as const)),
+);
 const moduleMap = new Map(modules.map((module) => [module.id, module]));
 const continentMap = new Map<string, Continent>(continents.map((continent) => [continent.id, continent]));
 
@@ -450,6 +503,18 @@ export function getPlace(id: string): Place {
 
 export function findLesson(id: string): Lesson | undefined {
   return lessonMap.get(id);
+}
+
+export function findQuiz(id: string): Quiz | undefined {
+  return quizMap.get(id);
+}
+
+export function nextSubTopic(subTopicId: string): SubTopic | null {
+  const quiz = quizMap.get(subTopicId);
+  if (!quiz) return null;
+  const index = quiz.lesson.subTopics.findIndex((topic) => topic.id === subTopicId);
+  if (index < 0) return null;
+  return quiz.lesson.subTopics[index + 1] ?? null;
 }
 
 export function getLesson(id: string): Lesson {
@@ -482,6 +547,22 @@ export function placesInModule(moduleId: string): Place[] {
   return [...ids].map((id) => getPlace(id));
 }
 
+const identifyPrompt: Record<PlaceKind, string> = {
+  country: "Бұл қай ел?",
+  island: "Бұл қай арал?",
+  peninsula: "Бұл қай түбек?",
+  range: "Бұл қай тау?",
+  plain: "Бұл қай жазық?",
+  river: "Бұл қай өзен?",
+  lake: "Бұл қай көл?",
+  sea: "Бұл қай теңіз?",
+  gulf: "Бұл қай шығанақ?",
+  desert: "Бұл қай шөл?",
+  city: "Бұл қай қала?",
+  capital: "Бұл қай астана?",
+  mountain: "Бұл қай тау?",
+};
+
 function optionIds(correctId: string, poolIds: readonly string[], salt: number): string[] {
   const correct = getPlace(correctId);
   const ranked = poolIds
@@ -492,45 +573,49 @@ function optionIds(correctId: string, poolIds: readonly string[], salt: number):
       if (distance !== 0) return distance;
       return a.id.localeCompare(b.id);
     });
-  const start = salt % ranked.length;
+  const take = Math.min(3, ranked.length);
+  const start = ranked.length ? salt % ranked.length : 0;
   const rotated = [...ranked.slice(start), ...ranked.slice(0, start)];
-  const picked = rotated.slice(0, 3).map((place) => place.id);
+  const picked = rotated.slice(0, take).map((place) => place.id);
   const merged = [correctId, ...picked];
   const shift = salt % merged.length;
   return [...merged.slice(shift), ...merged.slice(0, shift)];
 }
 
-const questionPattern = ["pinpoint", "identify", "pinpoint", "pick", "pinpoint", "identify", "pinpoint", "pick"] as const;
-
-export function questionsForLesson(lessonId: string): Question[] {
-  const lesson = getLesson(lessonId);
-  return questionPattern.map((type, index) => {
-    const placeId = lesson.placeIds[index];
-    if (!placeId) throw new Error(`Lesson ${lessonId} needs at least 8 places`);
-    const place = getPlace(placeId);
-    const id = `${lessonId}-q${index + 1}`;
-    if (type === "pinpoint") {
-      return { id, type, placeId, promptKk: `${place.accusativeKk} картадан тап` };
-    }
-    if (type === "identify") {
-      const named =
-        place.kind === "country" ? "Бұл қай ел?" : place.kind === "island" ? "Бұл қай арал?" : place.kind === "peninsula" ? "Бұл қай түбек?" : null;
-      return {
-        id,
-        type,
+export function questionsForLesson(quizId: string): Question[] {
+  const quiz = findQuiz(quizId);
+  if (!quiz) throw new Error(`Unknown quiz: ${quizId}`);
+  const placeIds = quiz.subTopic.placeIds;
+  const cap = 10;
+  const pinpointCount = Math.min(placeIds.length, cap);
+  const identifyCount = Math.min(placeIds.length, cap - pinpointCount);
+  const questions: Question[] = [];
+  const steps = Math.max(pinpointCount, identifyCount);
+  for (let index = 0; index < steps; index += 1) {
+    if (index < pinpointCount) {
+      const placeId = placeIds[index];
+      if (!placeId) continue;
+      const place = getPlace(placeId);
+      questions.push({
+        id: `${quizId}-q${questions.length + 1}`,
+        type: "pinpoint",
         placeId,
-        promptKk: named ?? (index === 1 ? "Картадағы белгі қай нысан?" : "Бұл нысан қалай аталады?"),
-        optionIds: optionIds(placeId, lesson.placeIds, index),
-      };
+        promptKk: `${place.accusativeKk} картадан тап`,
+      });
     }
-    return {
-      id,
-      type,
-      placeId,
-      promptKk: `«${place.nameKk}» қай жерде? Әріпті таңда.`,
-      optionIds: optionIds(placeId, lesson.placeIds, index + 3),
-    };
-  });
+    if (index < identifyCount) {
+      const placeId = placeIds[index];
+      if (!placeId) continue;
+      questions.push({
+        id: `${quizId}-q${questions.length + 1}`,
+        type: "identify",
+        placeId,
+        promptKk: identifyPrompt[getPlace(placeId).kind],
+        optionIds: optionIds(placeId, placeIds, index + 1),
+      });
+    }
+  }
+  return questions;
 }
 
 export function nextLessonId(lessonId: string): string | null {
@@ -622,53 +707,76 @@ function validateCurriculum() {
   for (const lesson of lessons) {
     if (retired.includes(lesson.id)) throw new Error(`Retired lesson id ${lesson.id}`);
     if (lesson.moduleId !== "eurasia") throw new Error(`${lesson.id} module`);
-    if (lesson.placeIds.length < 8 || lesson.placeIds.length > 12) throw new Error(`${lesson.id} size`);
+    if (lesson.subTopics.length < 3 || lesson.subTopics.length > 5) throw new Error(`${lesson.id} subtopic count`);
     if (new Set(lesson.placeIds).size !== lesson.placeIds.length) throw new Error(`Duplicate place in ${lesson.id}`);
     const expectedKind = kindByTitle[lesson.titleKk as (typeof lessonTitles)[number]];
-    const features = lesson.placeIds.map((placeId) => {
-      const place = getPlace(placeId);
-      if (used.has(placeId)) throw new Error(`Shared place ${placeId}`);
-      used.add(placeId);
-      if (place.continent !== lesson.continentId) throw new Error(`${placeId} is on the wrong continent`);
-      if (place.kind !== expectedKind) throw new Error(`${placeId} kind`);
-      if (place.lat < -11 || place.lat > 82 || place.lng < -30 || place.lng > 180) throw new Error(`${placeId} is outside the map`);
-      if (place.continent === "europe" && (place.lng < -25 || place.lng > 62 || place.lat < 34)) {
-        throw new Error(`${placeId} is not in Europe`);
+    if (lesson.titleKk === "Мемлекеттер") {
+      const expected =
+        lesson.continentId === "asia"
+          ? ["Оңтүстік-Шығыс Азия", "Шығыс Азия", "Оңтүстік Азия", "Орталық Азия", "Таяу Шығыс"]
+          : ["Солтүстік Еуропа", "Батыс Еуропа", "Оңтүстік Еуропа", "Шығыс Еуропа", "Орталық Еуропа"];
+      if (lesson.subTopics.map((topic) => topic.titleKk).join("|") !== expected.join("|")) {
+        throw new Error(`${lesson.id} state order`);
       }
-      if (place.continent === "asia" && place.lng < 32 && place.lat > 12) throw new Error(`${placeId} is not in Asia`);
-      if (place.radiusKm < 20) throw new Error(`${placeId} radius`);
-      if (place.kind === "country") {
-        if (!landShape(place.id)) throw new Error(`Missing country outline ${place.id}`);
-      } else if (!featureShape(place.id)) {
-        throw new Error(`Missing hotspot ${place.id}`);
-      }
-      if (place.kind === "island" || place.kind === "peninsula") {
-        const outline = featureShape(place.id);
-        if (!outline || /[aA]/.test(outline.d)) throw new Error(`${place.id} must be a filled outline, not a circle`);
-      }
-      return place;
-    });
-    for (let i = 0; i < features.length; i += 1) {
-      for (let j = i + 1; j < features.length; j += 1) {
-        const left = features[i];
-        const right = features[j];
-        if (!left || !right) continue;
-        const distance = haversineKm(left, right);
-        if (distance <= left.radiusKm || distance <= right.radiusKm) {
-          throw new Error(`${left.id} and ${right.id} overlap (${Math.round(distance)} km)`);
+    }
+    const seenTopics = new Set<string>();
+    for (const topic of lesson.subTopics) {
+      if (seenTopics.has(topic.id) || quizMap.get(topic.id)?.lesson.id !== lesson.id) throw new Error(`Bad subtopic ${topic.id}`);
+      seenTopics.add(topic.id);
+      if (topic.placeIds.length < 3 || topic.placeIds.length > 8) throw new Error(`${topic.id} size`);
+      if (!topic.titleKk.trim()) throw new Error(`${topic.id} title`);
+      const features = topic.placeIds.map((placeId) => {
+        const place = getPlace(placeId);
+        if (used.has(placeId)) throw new Error(`Shared place ${placeId}`);
+        used.add(placeId);
+        if (place.continent !== lesson.continentId) throw new Error(`${placeId} is on the wrong continent`);
+        if (place.kind !== expectedKind) throw new Error(`${placeId} kind`);
+        if (place.lat < -11 || place.lat > 82 || place.lng < -30 || place.lng > 180) throw new Error(`${placeId} is outside the map`);
+        if (place.continent === "europe" && (place.lng < -25 || place.lng > 62 || place.lat < 34)) {
+          throw new Error(`${placeId} is not in Europe`);
+        }
+        if (place.continent === "asia" && place.lng < 26 && place.lat > 12) throw new Error(`${placeId} is not in Asia`);
+        if (place.radiusKm < 20) throw new Error(`${placeId} radius`);
+        if (place.kind === "country") {
+          if (!landShape(place.id)) throw new Error(`Missing country outline ${place.id}`);
+        } else if (!featureShape(place.id)) {
+          throw new Error(`Missing hotspot ${place.id}`);
+        }
+        if (place.kind === "island" || place.kind === "peninsula") {
+          const outline = featureShape(place.id);
+          if (!outline || /[aA]/.test(outline.d)) throw new Error(`${place.id} must be a filled outline, not a circle`);
+        }
+        return place;
+      });
+      const filled = new Set<PlaceKind>(["country", "island", "peninsula"]);
+      if (features.some((place) => !filled.has(place.kind))) {
+        for (let i = 0; i < features.length; i += 1) {
+          for (let j = i + 1; j < features.length; j += 1) {
+            const left = features[i];
+            const right = features[j];
+            if (!left || !right) continue;
+            const distance = haversineKm(left, right);
+            if (distance <= left.radiusKm || distance <= right.radiusKm) {
+              throw new Error(`${left.id} and ${right.id} overlap (${Math.round(distance)} km)`);
+            }
+          }
         }
       }
-    }
-    const questions = questionsForLesson(lesson.id);
-    if (questions.length !== 8) throw new Error(`${lesson.id} question count`);
-    const types = new Set(questions.map((question) => question.type));
-    if (!types.has("pinpoint") || (!types.has("identify") && !types.has("pick"))) {
-      throw new Error(`${lesson.id} needs both task types`);
-    }
-    for (const question of questions) {
-      if (question.type === "pinpoint") continue;
-      if (question.optionIds.length !== 4 || new Set(question.optionIds).size !== 4) throw new Error(`Bad options ${question.id}`);
-      if (!question.optionIds.includes(question.placeId)) throw new Error(`Missing answer ${question.id}`);
+      const questions = questionsForLesson(topic.id);
+      if (questions.length < 5 || questions.length > 10) throw new Error(`${topic.id} question count ${questions.length}`);
+      const types = new Set(questions.map((question) => question.type));
+      if (!types.has("pinpoint") || !types.has("identify")) throw new Error(`${topic.id} needs both task types`);
+      for (const question of questions) {
+        if (question.type === "pinpoint") {
+          if (!question.promptKk.endsWith("картадан тап")) throw new Error(`Bad pinpoint ${question.id}`);
+          continue;
+        }
+        if (!question.promptKk.startsWith("Бұл қай ")) throw new Error(`Bad identify ${question.id}`);
+        if (question.optionIds.length < 3 || question.optionIds.length > 4 || new Set(question.optionIds).size !== question.optionIds.length) {
+          throw new Error(`Bad options ${question.id}`);
+        }
+        if (!question.optionIds.includes(question.placeId)) throw new Error(`Missing answer ${question.id}`);
+      }
     }
   }
   if (used.size !== places.length) throw new Error("Unused place");

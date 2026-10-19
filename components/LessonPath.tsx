@@ -54,7 +54,7 @@ export function LessonPath({ lessonIds, highlightId }: { lessonIds: readonly str
                     return;
                   }
                   setNote(null);
-                  router.push(`/lesson/${lessonId}`);
+                  router.push(`/continent/${lesson.continentId}/${lessonId}`);
                 }}
                 className={`grid h-20 w-20 place-items-center rounded-full border-b-4 text-white ${
                   state === "locked" ? "border-[#cfcfcf] bg-[#e5e5e5] text-[#afafaf]" : "border-[#46a302] bg-[#58cc02]"

@@ -7,7 +7,7 @@ import { AvatarPicker } from "@/components/AvatarPicker";
 import { FlagAvatar } from "@/components/FlagAvatar";
 import { DuoButton } from "@/components/DuoButton";
 import { modules } from "@/lib/curriculum";
-import { isModuleFinished, levelFromXp } from "@/lib/progress";
+import { completedSectionCount, isModuleFinished, levelFromXp } from "@/lib/progress";
 import { useAppStore } from "@/store/useAppStore";
 
 export default function ProfilePage() {
@@ -54,7 +54,7 @@ export default function ProfilePage() {
         <h2 className="text-lg font-extrabold">Аяқталған модульдер</h2>
         <ul className="mt-3 space-y-3">
           {modules.map((module) => {
-            const count = module.lessonIds.filter((id) => profile?.completedLessonIds.includes(id)).length;
+            const count = completedSectionCount(module.id, profile?.completedLessonIds ?? []);
             const complete = count === module.lessonIds.length;
             return (
               <li key={module.id} className="flex items-center justify-between gap-3">

@@ -1,9 +1,23 @@
-import { findLesson, getContinent, getModule, modules } from "@/lib/curriculum";
+import { findLesson, findQuiz, getContinent, getModule, lessons, modules } from "@/lib/curriculum";
 
-const currentLessonIds = new Set(modules.flatMap((module) => module.lessonIds));
+const currentLessonIds = new Set([
+  ...modules.flatMap((module) => module.lessonIds),
+  ...lessons.flatMap((lesson) => lesson.subTopics.map((topic) => topic.id)),
+]);
 
 export function currentCompletions(completed: readonly string[]) {
   return completed.filter((id) => currentLessonIds.has(id));
+}
+
+export function isSectionComplete(lessonId: string, completed: readonly string[]) {
+  const lesson = findLesson(lessonId);
+  if (!lesson) return false;
+  if (completed.includes(lessonId)) return true;
+  return lesson.subTopics.every((topic) => completed.includes(topic.id));
+}
+
+export function completedSectionCount(moduleId: string, completed: readonly string[]) {
+  return getModule(moduleId).lessonIds.filter((id) => isSectionComplete(id, completed)).length;
 }
 
 export function levelFromXp(xp: number) {
@@ -41,24 +55,41 @@ export function nextStreak(streak: number, lastActiveDate: string | null, today 
 export function isLessonUnlocked(lessonId: string, completed: readonly string[]) {
   const lesson = findLesson(lessonId);
   if (!lesson) return false;
-  const done = currentCompletions(completed);
   const continent = getContinent(lesson.continentId);
   const index = continent.lessonIds.indexOf(lessonId);
   if (index < 0) return false;
   if (index === 0) return true;
-  return done.includes(continent.lessonIds[index - 1] ?? "");
+  const previous = continent.lessonIds[index - 1];
+  return previous ? isSectionComplete(previous, completed) : false;
+}
+
+export function isSubTopicUnlocked(subTopicId: string, completed: readonly string[]) {
+  const quiz = findQuiz(subTopicId);
+  if (!quiz) return false;
+  if (!isLessonUnlocked(quiz.lesson.id, completed)) return false;
+  const index = quiz.lesson.subTopics.findIndex((topic) => topic.id === subTopicId);
+  if (index <= 0) return index === 0;
+  if (completed.includes(quiz.lesson.id)) return true;
+  const previous = quiz.lesson.subTopics[index - 1];
+  return previous ? completed.includes(previous.id) : false;
 }
 
 export function isModuleFinished(moduleId: string, completed: readonly string[]) {
-  const done = new Set(currentCompletions(completed));
-  return getModule(moduleId).lessonIds.every((id) => done.has(id));
+  return getModule(moduleId).lessonIds.every((id) => isSectionComplete(id, completed));
 }
 
 export type LessonVisualState = "locked" | "active" | "done";
 
 export function lessonVisualState(lessonId: string, completed: readonly string[]): LessonVisualState {
-  const done = currentCompletions(completed);
-  if (done.includes(lessonId)) return "done";
-  if (!isLessonUnlocked(lessonId, done)) return "locked";
+  if (isSectionComplete(lessonId, completed)) return "done";
+  if (!isLessonUnlocked(lessonId, completed)) return "locked";
+  return "active";
+}
+
+export function subTopicVisualState(subTopicId: string, completed: readonly string[]): LessonVisualState {
+  const quiz = findQuiz(subTopicId);
+  if (!quiz) return "locked";
+  if (completed.includes(subTopicId) || completed.includes(quiz.lesson.id)) return "done";
+  if (!isSubTopicUnlocked(subTopicId, completed)) return "locked";
   return "active";
 }

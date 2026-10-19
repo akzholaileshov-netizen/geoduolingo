@@ -3,7 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { playTone } from "@/lib/audio";
-import { questionsForLesson, findLesson } from "@/lib/curriculum";
+import { questionsForLesson, findQuiz } from "@/lib/curriculum";
 import { isFlagCode } from "@/lib/flags";
 import { nextStreak } from "@/lib/progress";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabaseClient";
@@ -410,16 +410,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   startLesson: (lessonId) => {
-    const lesson = findLesson(lessonId);
+    const quiz = findQuiz(lessonId);
     const profile = get().profile;
     const current = get().session;
-    if (!lesson || !profile) return;
+    if (!quiz || !profile) return;
     if (current?.lessonId === lessonId && current.status === "active") return;
     const count = questionsForLesson(lessonId).length;
     set({
       session: {
         lessonId,
-        moduleId: lesson.moduleId,
+        moduleId: quiz.lesson.moduleId,
         index: 0,
         hearts: MAX_HEARTS,
         xpEarned: 0,
