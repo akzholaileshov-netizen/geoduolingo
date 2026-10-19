@@ -2,17 +2,26 @@
 
 import { Check, Lock, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getLesson } from "@/lib/curriculum";
 import { lessonVisualState } from "@/lib/progress";
 import { useAppStore } from "@/store/useAppStore";
 
-export function LessonPath({ lessonIds }: { lessonIds: readonly string[] }) {
+export function LessonPath({ lessonIds, highlightId }: { lessonIds: readonly string[]; highlightId?: string | null }) {
   const profile = useAppStore((state) => state.profile);
   const router = useRouter();
   const [note, setNote] = useState<string | null>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+  const completed = profile?.completedLessonIds ?? [];
+  const highlight =
+    highlightId && lessonIds.includes(highlightId) && lessonVisualState(highlightId, completed) === "active" ? highlightId : null;
+
+  useEffect(() => {
+    if (!highlight) return;
+    highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlight]);
+
   if (!profile) return null;
-  const completed = profile.completedLessonIds;
 
   return (
     <div>
@@ -25,12 +34,19 @@ export function LessonPath({ lessonIds }: { lessonIds: readonly string[] }) {
           const lesson = getLesson(lessonId);
           const state = lessonVisualState(lessonId, completed);
           const offset = index % 2 === 0 ? -52 : 52;
+          const pulsing = lessonId === highlight;
           return (
-            <div key={lessonId} className="relative z-10 py-2" style={{ transform: `translateX(${offset}px)` }}>
+            <div
+              key={lessonId}
+              ref={pulsing ? highlightRef : undefined}
+              className="relative z-10 py-2"
+              style={{ transform: `translateX(${offset}px)` }}
+            >
               <button
                 type="button"
                 data-testid={`skill-node-${lessonId}`}
                 data-state={state}
+                data-highlight={pulsing ? "true" : "false"}
                 aria-label={lesson.titleKk}
                 onClick={() => {
                   if (state === "locked") {
@@ -42,7 +58,7 @@ export function LessonPath({ lessonIds }: { lessonIds: readonly string[] }) {
                 }}
                 className={`grid h-20 w-20 place-items-center rounded-full border-b-4 text-white ${
                   state === "locked" ? "border-[#cfcfcf] bg-[#e5e5e5] text-[#afafaf]" : "border-[#46a302] bg-[#58cc02]"
-                } ${state === "active" ? "ring-4 ring-[#c8f7a0]" : ""}`}
+                } ${state === "active" ? "ring-4 ring-[#c8f7a0]" : ""} ${pulsing ? "animate-lesson-pulse" : ""}`}
               >
                 {state === "locked" ? <Lock size={28} /> : null}
                 {state === "done" ? <Check size={32} strokeWidth={3} /> : null}

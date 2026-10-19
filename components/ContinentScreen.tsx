@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { LessonPath } from "@/components/LessonPath";
 import { DuoButton } from "@/components/DuoButton";
@@ -9,6 +9,7 @@ import { findContinent } from "@/lib/curriculum";
 
 export function ContinentScreen() {
   const params = useParams<{ continentId: string }>();
+  const search = useSearchParams();
   const router = useRouter();
   const continent = findContinent(params.continentId);
 
@@ -30,7 +31,7 @@ export function ContinentScreen() {
             <p className="mt-1 text-sm font-bold text-[#777]">{continent.descriptionKk}</p>
           </div>
           <div className="mt-4">
-            <LessonPath lessonIds={continent.lessonIds} />
+            <LessonPath lessonIds={continent.lessonIds} highlightId={search.get("focus")} />
           </div>
         </section>
       ) : (

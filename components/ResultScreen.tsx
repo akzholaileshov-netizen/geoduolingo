@@ -9,7 +9,7 @@ import { Splash } from "@/components/Providers";
 import { useRequireProfile } from "@/components/AppShell";
 import { playTone } from "@/lib/audio";
 import { findLesson, nextLessonId } from "@/lib/curriculum";
-import { isLessonUnlocked, levelFromXp } from "@/lib/progress";
+import { lessonVisualState, levelFromXp } from "@/lib/progress";
 import { useAppStore } from "@/store/useAppStore";
 
 const confetti = [
@@ -59,8 +59,7 @@ export function ResultScreen() {
   if (!profile || !ready || !lesson || !session) return <Splash />;
 
   const nextId = nextLessonId(lesson.id);
-  const next = nextId ? findLesson(nextId) : undefined;
-  const nextOpen = Boolean(nextId && isLessonUnlocked(nextId, profile.completedLessonIds));
+  const unlockedNext = Boolean(passed && nextId && lessonVisualState(nextId, profile.completedLessonIds) === "active");
   const previousLevel = levelFromXp(profile.xp - session.xpEarned);
   const level = levelFromXp(profile.xp);
   const streakGrew = passed && profile.streak > session.streakBefore;
@@ -104,10 +103,20 @@ export function ResultScreen() {
         </p>
       ) : null}
       <div className="mt-auto space-y-3 pt-8">
-        {passed && next && nextOpen ? (
-          <DuoButton onClick={() => router.push(`/lesson/${next.id}`)}>Келесі сабақ</DuoButton>
+        <DuoButton
+          data-testid="continue-button"
+          onClick={() => {
+            const focus = unlockedNext && nextId ? `?focus=${nextId}` : "";
+            router.push(`/continent/${lesson.continentId}${focus}`);
+          }}
+        >
+          Жалғастыру
+        </DuoButton>
+        {!passed ? (
+          <DuoButton variant="white" onClick={() => router.push(`/lesson/${lesson.id}`)}>
+            Қайталау
+          </DuoButton>
         ) : null}
-        {!passed ? <DuoButton onClick={() => router.push(`/lesson/${lesson.id}`)}>Қайталау</DuoButton> : null}
         <DuoButton variant="white" onClick={() => router.push(`/continent/${lesson.continentId}`)}>
           Артқа
         </DuoButton>
