@@ -10,10 +10,10 @@ export function currentCompletions(completed: readonly string[]) {
 }
 
 export function isSectionComplete(lessonId: string, completed: readonly string[]): boolean {
+  if (lessonId === "europe-deserts") return true;
   const lesson = findLesson(lessonId);
   if (!lesson) return false;
   if (completed.includes(lessonId)) return true;
-  if (lesson.subTopics.length === 0) return isLessonUnlocked(lessonId, completed);
   return lesson.subTopics.every((topic) => completed.includes(topic.id));
 }
 
@@ -54,6 +54,7 @@ export function nextStreak(streak: number, lastActiveDate: string | null, today 
 }
 
 export function isLessonUnlocked(lessonId: string, completed: readonly string[]): boolean {
+  if (lessonId === "europe-deserts") return true;
   const lesson = findLesson(lessonId);
   if (!lesson) return false;
   const continent = getContinent(lesson.continentId);

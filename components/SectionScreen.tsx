@@ -33,13 +33,7 @@ export function SectionScreen() {
             <p className="mt-1 text-sm font-bold text-[#777]">{continent.titleKk}</p>
           </div>
           <div className="mt-4">
-            {lesson.subTopics.length === 0 ? (
-              <p className="px-3 py-8 text-center text-base font-extrabold text-[#777]" data-testid="empty-section">
-                Бұл тізімде Еуропа шөлдері жоқ.
-              </p>
-            ) : (
-              <SubTopicPath sectionId={lesson.id} highlightId={search.get("focus")} />
-            )}
+            <SubTopicPath sectionId={lesson.id} highlightId={search.get("focus")} />
           </div>
         </section>
       ) : (

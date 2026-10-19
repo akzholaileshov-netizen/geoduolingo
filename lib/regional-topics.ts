@@ -382,6 +382,4 @@ export const subTopicsByLesson: Record<string, TopicPlan[]> = {
     { id: "asia-deserts-east", titleKk: "Шығыс және Оңтүстік", placeIds: ["gobi", "taklamakan", "thar"] },
     { id: "asia-deserts-arabia", titleKk: "Арабия", placeIds: ["rub-al-khali", "arabian-desert", "great-nefud", "little-nefud"] },
   ],
-  "europe-deserts": [
-  ],
 };

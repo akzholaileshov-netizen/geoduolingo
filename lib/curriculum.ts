@@ -100,8 +100,8 @@ function withSubTopics(seed: {
   order: number;
   placeIds: string[];
 }): Lesson {
-  const plans = subTopicsByLesson[seed.id] ?? [];
-  if (!plans.length && seed.id !== "europe-deserts") throw new Error(`Missing subtopics for ${seed.id}`);
+  const plans = subTopicsByLesson[seed.id];
+  if (!plans?.length) throw new Error(`Missing subtopics for ${seed.id}`);
   const subTopics = plans.map((plan, index) => ({
     id: plan.id,
     titleKk: plan.titleKk,
@@ -271,14 +271,6 @@ export const lessons: Lesson[] = ([
     titleKk: "Шығанақтар",
     order: 9,
     placeIds: ["gulf-of-finland", "biscay", "bothnia", "riga", "lion", "genoa", "venice", "cadiz"],
-  },
-  {
-    id: "europe-deserts",
-    moduleId: "eurasia",
-    continentId: "europe",
-    titleKk: "Шөлдер",
-    order: 10,
-    placeIds: ["tabernas", "bardenas", "accona", "oltenia", "bledow", "oleshky", "sprengisandur", "svalbard-desert"],
   },
 ] satisfies Array<{
   id: string;
@@ -514,7 +506,6 @@ function validateCurriculum() {
     "europe-lakes",
     "europe-seas",
     "europe-gulfs",
-    "europe-deserts",
   ];
   if (modules[0]?.lessonIds.join(",") !== expectedLessons.join(",")) throw new Error("Unexpected lesson list");
   const retired = [
@@ -540,10 +531,12 @@ function validateCurriculum() {
     "eurasia-seas",
     "eurasia-gulfs",
     "eurasia-deserts",
+    "europe-deserts",
   ];
   const used = new Set<string>();
   for (const continent of continents) {
-    if (continent.lessonIds.length !== 10) throw new Error(`${continent.id} lesson count`);
+    const expectedCount = continent.id === "europe" ? 9 : 10;
+    if (continent.lessonIds.length !== expectedCount) throw new Error(`${continent.id} lesson count`);
     continent.lessonIds.forEach((lessonId, index) => {
       const lesson = getLesson(lessonId);
       if (lesson.continentId !== continent.id) throw new Error(`${lessonId} continent`);
@@ -554,10 +547,7 @@ function validateCurriculum() {
   for (const lesson of lessons) {
     if (retired.includes(lesson.id)) throw new Error(`Retired lesson id ${lesson.id}`);
     if (lesson.moduleId !== "eurasia") throw new Error(`${lesson.id} module`);
-    if (lesson.id === "europe-deserts") {
-      if (lesson.subTopics.length !== 0 || lesson.placeIds.length !== 0) throw new Error("Europe has no deserts in the source list");
-      continue;
-    }
+    if (lesson.continentId === "europe" && lesson.titleKk === "Шөлдер") throw new Error("Europe has no deserts section");
     if (lesson.subTopics.length < 1 || lesson.subTopics.length > 5) throw new Error(`${lesson.id} subtopic count`);
     if (new Set(lesson.placeIds).size !== lesson.placeIds.length) throw new Error(`Duplicate place in ${lesson.id}`);
     const expectedKind = kindByTitle[lesson.titleKk as (typeof lessonTitles)[number]];
