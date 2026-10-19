@@ -81,10 +81,14 @@ export const regionLand: MapShape[] = landShapes.map((shape) => ({
 const extraById = new Map(extraShapes.map((shape) => [shape.id, shape]));
 const outlineById = new Map(outlineShapes.map((shape) => [shape.id, shape]));
 
+function areal(shape: MapShape) {
+  return !/[aA]/.test(shape.d);
+}
+
 export const regionFeatures: MapShape[] = [
-  ...featureShapes.filter((shape) => !extraById.has(shape.id) && !outlineById.has(shape.id)),
-  ...extraShapes.filter((shape) => !outlineById.has(shape.id)),
-  ...outlineShapes,
+  ...featureShapes.filter((shape) => areal(shape) && !extraById.has(shape.id) && !outlineById.has(shape.id)),
+  ...extraShapes.filter((shape) => areal(shape) && !outlineById.has(shape.id)),
+  ...outlineShapes.filter(areal),
 ];
 
 const landById = new Map(regionLand.map((shape) => [shape.id, shape]));

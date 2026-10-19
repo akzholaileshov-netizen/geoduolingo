@@ -20,7 +20,7 @@ const paints: Record<RegionTone, { fill: string; stroke: string }> = {
   selected: { fill: "#58cc02", stroke: "#3f9200" },
   correct: { fill: "#58cc02", stroke: "#3f9200" },
   wrong: { fill: "#ff9d9d", stroke: "#d62828" },
-  marked: { fill: "#7ec8f8", stroke: "#1899d6" },
+  marked: { fill: "#EF4444", stroke: "#333333" },
   muted: { fill: "#ececec", stroke: "#b5b5b5" },
   found: { fill: "#FFFFFF", stroke: "#333333" },
   missed: { fill: "#EF4444", stroke: "#333333" },
@@ -54,7 +54,7 @@ export function EurasiaMap({
   function paintFor(region: MapRegionState | undefined, hotspot: boolean) {
     const tone = region?.tone ?? "idle";
     const paint = paints[tone];
-    if (hotspot && tone === "idle") return { fill: "#ffffff", stroke: "#1d4e89" };
+    if (hotspot && tone === "idle") return { fill: "transparent", stroke: "#334155" };
     return paint;
   }
 
@@ -76,8 +76,8 @@ export function EurasiaMap({
         vectorEffect="non-scaling-stroke"
         strokeLinejoin="round"
         fillRule="evenodd"
-        pointerEvents={interactive ? "auto" : "none"}
-        style={{ cursor: interactive ? "pointer" : "default", pointerEvents: interactive ? "auto" : "none" }}
+        pointerEvents={interactive ? "all" : "none"}
+        style={{ cursor: interactive ? "pointer" : "default", pointerEvents: interactive ? "all" : "none" }}
         onClick={
           interactive
             ? () => {

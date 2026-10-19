@@ -261,11 +261,6 @@ export function LessonScreen() {
             onSelect={active && !view.checked ? (mapQuestion ? handleMapSelect : question.type === "pick" ? setChoice : undefined) : undefined}
           />
         </div>
-        {question.type === "identify" ? (
-          <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-xs font-extrabold text-[#1cb0f6] shadow">
-            Белгіленген нысан
-          </div>
-        ) : null}
       </div>
       {question.type === "identify" ? (
         <div className="grid grid-cols-2 gap-2 px-4 pt-3">
